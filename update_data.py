@@ -42,7 +42,7 @@ class GapperDataCollector:
                 volume = ticker_data.get('prevDay', {}).get('v', 0)
                 price = ticker_data.get('day', {}).get('c', 0)
                 
-                if abs(gap_pct) >= 40 and volume >= 1000000 and price >= 0.30:
+                if abs(gap_pct) >= 50 and volume >= 1000000 and price >= 0.30:
                     gappers.append({
                         'ticker': ticker_data['ticker'],
                         'gap_percentage': gap_pct,
@@ -184,7 +184,7 @@ class GapperDataCollector:
                         time_key = point['time']
                         if time_key not in time_aggregates:
                             time_aggregates[time_key] = []
-                        time_aggregates[time_key].append(point['price_change_pct'])
+                        time_aggregates[time_key].append(point.get('price_change_pct', 0))
                 
                 intraday_data = []
                 for time_key in sorted(time_aggregates.keys()):
@@ -214,9 +214,9 @@ class GapperDataCollector:
         # Calculate overall statistics
         overall_stats = {
             'totalGappers': len(all_gappers),
-            'avgOpenToClose': np.mean([m['statistics']['avgOpenToClose'] for m in monthly_data if m['statistics']]),
-            'medianHighTime': self.get_most_common_time([m['statistics']['medianHighTime'] for m in monthly_data if m['statistics']]),
-            'profitableShorts': np.mean([m['statistics']['profitableShorts'] for m in monthly_data if m['statistics']])
+            'avgOpenToClose': np.mean([m['statistics']['avgOpenToClose'] for m in monthly_data if m.get('statistics')]) if monthly_data else 0,
+            'medianHighTime': self.get_most_common_time([m['statistics']['medianHighTime'] for m in monthly_data if m.get('statistics')]),
+            'profitableShorts': np.mean([m['statistics']['profitableShorts'] for m in monthly_data if m.get('statistics')]) if monthly_data else 0
         }
         
         return {
@@ -249,9 +249,12 @@ class GapperDataCollector:
         print(f"Data saved to {output_path}")
 
 def main():
-    # Your Polygon API key
-    API_KEY = "YOUR_POLYGON_API_KEY_HERE"
+    # Get API key from environment variable
+    API_KEY = os.environ.get('POLYGON_API_KEY')
     
+    if not API_KEY:
+        print("Warning: POLYGON_API_KEY not set, using demo data")
+        API_KEY = "demo"  # Will generate demo data
     collector = GapperDataCollector(API_KEY)
     
     print("Starting gapper data collection...")
