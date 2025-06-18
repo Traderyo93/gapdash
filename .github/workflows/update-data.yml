@@ -1,0 +1,38 @@
+name: Update Gapper Data
+
+on:
+  schedule:
+    # Runs at 9 PM UK time (4 PM EST)
+    - cron: '0 21 * * *'
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        pip install pandas numpy requests pytz
+    
+    - name: Run data collector
+      env:
+        POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
+      run: |
+        python update_data.py
+    
+    - name: Commit and push if changed
+      run: |
+        git config --global user.email "action@github.com"
+        git config --global user.name "GitHub Action"
+        git add -A
+        git diff --exit-code && exit 0
+        git commit -m "Update gapper data"
+        git push
