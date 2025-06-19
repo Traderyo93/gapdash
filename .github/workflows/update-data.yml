@@ -12,6 +12,8 @@ jobs:
     
     steps:
     - uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -28,11 +30,19 @@ jobs:
       run: |
         python update_data.py
     
+    - name: Check if data file was created
+      run: |
+        if [ -f "data/gapper_stats.json" ]; then
+          echo "Data file created successfully"
+          ls -la data/
+        else
+          echo "ERROR: Data file was not created"
+          exit 1
+        fi
+    
     - name: Commit and push if changed
       run: |
         git config --global user.email "action@github.com"
         git config --global user.name "GitHub Action"
-        git add -A
-        git diff --exit-code && exit 0
-        git commit -m "Update gapper data"
-        git push
+        git add data/gapper_stats.json
+        git diff --staged --quiet && echo "No changes to commit" || (git commit -m "Update gapper data" && git push)
