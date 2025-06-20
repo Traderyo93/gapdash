@@ -219,17 +219,17 @@ class GapDataUpdater:
                                     
                                     final_candidates.append({
                                         'ticker': ticker,
-                                        'gap_percentage': gap_928,
-                                        'volume': pre_market_volume,
-                                        'price': price_928,
-                                        'previous_close': candidate['previous_close'],
-                                        'gap_928': gap_928,
-                                        'price_928': price_928,
+                                        'gap_percentage': float(gap_928),
+                                        'volume': int(pre_market_volume),
+                                        'price': float(price_928),
+                                        'previous_close': float(candidate['previous_close']),
+                                        'gap_928': float(gap_928),
+                                        'price_928': float(price_928),
                                         'date': date_str,
-                                        'open': daily_ohlc.get('o', price_928),
-                                        'high': daily_ohlc.get('h', price_928),
-                                        'low': daily_ohlc.get('l', price_928),
-                                        'close': daily_ohlc.get('c', price_928)
+                                        'open': float(daily_ohlc.get('o', price_928)),
+                                        'high': float(daily_ohlc.get('h', price_928)),
+                                        'low': float(daily_ohlc.get('l', price_928)),
+                                        'close': float(daily_ohlc.get('c', price_928))
                                     })
                                 else:
                                     print(f"  -> Volume too low: {pre_market_volume:,}")
@@ -360,8 +360,8 @@ class GapDataUpdater:
             
             cache_data['lastGaps'] = [{
                 'ticker': g['ticker'],
-                'gapPercentage': g['gap_percentage'],
-                'volume': g['volume'],
+                'gapPercentage': float(g['gap_percentage']),
+                'volume': int(g['volume']),
                 'date': g['date']
             } for g in latest_gappers[:20]]  # Top 20 from latest day
             
