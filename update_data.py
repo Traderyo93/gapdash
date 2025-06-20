@@ -1,401 +1,349 @@
 #!/usr/bin/env python3
 """
-Gapper Data Manager - Handles initial historical load and daily updates
+Gap Scanner Data Updater
+Updates gap scanner data from Polygon.io API
 """
 
-import pandas as pd
-import numpy as np
-import requests
-import json
 import os
-from datetime import datetime, timedelta, time
+import sys
+import json
+import requests
+from datetime import datetime, timedelta
 import pytz
-import time as time_module
-import logging
+from collections import defaultdict
+import time
 
-class GapperDataManager:
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-        self.base_url = "https://api.polygon.io/v2"
+class GapDataUpdater:
+    def __init__(self):
+        self.api_key = os.getenv('POLYGON_API_KEY')
+        if not self.api_key:
+            raise ValueError("POLYGON_API_KEY environment variable not set")
+        
         self.eastern = pytz.timezone('US/Eastern')
-        self.cache_file = "data/gapper_stats.json"
+        self.data_dir = 'data'
+        self.cache_file = os.path.join(self.data_dir, 'gap_data_cache.json')
         
-        # Set up logging
-        logging.basicConfig(level=logging.INFO, 
-                          format='%(asctime)s - %(levelname)s - %(message)s')
+        # Ensure data directory exists
+        os.makedirs(self.data_dir, exist_ok=True)
+        
+    def is_market_day(self, date):
+        """Check if date is a trading day"""
+        # Skip weekends
+        if date.weekday() >= 5:
+            return False
+        
+        # Add holiday check here if needed
+        holidays = [
+            # Add US market holidays
+        ]
+        
+        return date.date() not in holidays
     
-    def load_cache(self):
-        """Load existing cache data"""
-        if os.path.exists(self.cache_file):
-            with open(self.cache_file, 'r') as f:
-                return json.load(f)
-        return None
+    def get_trading_days(self, days=90):
+        """Get list of trading days for the past N days"""
+        trading_days = []
+        current = datetime.now(self.eastern)
+        
+        while len(trading_days) < days:
+            if self.is_market_day(current):
+                trading_days.append(current.strftime('%Y-%m-%d'))
+            current -= timedelta(days=1)
+            
+        return trading_days
     
-    def save_cache(self, data):
-        """Save data to cache file"""
-        os.makedirs(os.path.dirname(self.cache_file), exist_ok=True)
-        with open(self.cache_file, 'w') as f:
-            json.dump(data, f, indent=2)
-        logging.info(f"Cache saved to {self.cache_file}")
-    
-    def get_previous_trading_day(self, date_str):
-        """Get previous trading day"""
-        date = datetime.strptime(date_str, '%Y-%m-%d')
-        previous_day = date - timedelta(days=1)
-        while previous_day.weekday() >= 5:
-            previous_day -= timedelta(days=1)
-        return previous_day.strftime('%Y-%m-%d')
-    
-    def fetch_daily_gappers(self, date_str):
-        """Fetch gappers for a specific date using same logic as backtest"""
-        try:
-            prev_date_str = self.get_previous_trading_day(date_str)
-            
-            # Get previous closes
-            prev_url = f"{self.base_url}/aggs/grouped/locale/us/market/stocks/{prev_date_str}?adjusted=false&apiKey={self.api_key}"
-            prev_response = requests.get(prev_url)
-            prev_data = prev_response.json()
-            
-            prev_closes = {}
-            if 'results' in prev_data:
-                for stock in prev_data['results']:
-                    prev_closes[stock['T']] = stock['c']
-            
-            # Get current day data
-            curr_url = f"{self.base_url}/aggs/grouped/locale/us/market/stocks/{date_str}?adjusted=false&apiKey={self.api_key}"
-            curr_response = requests.get(curr_url)
-            curr_data = curr_response.json()
-            
-            gappers = []
-            if 'results' in curr_data:
-                for stock in curr_data['results']:
-                    ticker = stock['T']
-                    
-                    # Apply filters
-                    if len(ticker) > 4 or ticker.endswith(('WS', 'RT', 'WSA')):
-                        continue
-                    
-                    if ticker in prev_closes:
-                        prev_close = prev_closes[ticker]
-                        open_price = stock['o']
-                        volume = stock['v']
-                        
-                        # Calculate gap
-                        gap_pct = ((open_price - prev_close) / prev_close) * 100
-                        
-                        # Check criteria: 50%+ gap, $0.30+ price, 1M+ volume
-                        if abs(gap_pct) >= 50 and open_price >= 0.30 and volume >= 1000000:
-                            gappers.append({
-                                'ticker': ticker,
-                                'gap_percentage': gap_pct,
-                                'volume': volume,
-                                'price': stock['c'],
-                                'open': open_price,
-                                'high': stock['h'],
-                                'low': stock['l'],
-                                'previous_close': prev_close,
-                                'date': date_str
-                            })
-            
-            return sorted(gappers, key=lambda x: abs(x['gap_percentage']), reverse=True)
-            
-        except Exception as e:
-            logging.error(f"Error fetching gappers for {date_str}: {e}")
-            return []
-    
-    def fetch_intraday_patterns(self, ticker, date_str):
-        """Fetch 5-minute intraday data and calculate patterns"""
-        url = f"{self.base_url}/aggs/ticker/{ticker}/range/5/minute/{date_str}/{date_str}?adjusted=false&sort=asc&apiKey={self.api_key}"
+    def fetch_daily_gappers(self, date):
+        """Fetch gappers for a specific date"""
+        url = f"https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/{date}"
+        params = {
+            'adjusted': 'false',
+            'apiKey': self.api_key
+        }
         
         try:
-            response = requests.get(url)
+            response = requests.get(url, params=params, timeout=30)
+            response.raise_for_status()
             data = response.json()
             
-            if data.get('status') == 'OK' and data.get('results'):
-                df = pd.DataFrame(data['results'])
-                df['t'] = pd.to_datetime(df['t'], unit='ms', utc=True).dt.tz_convert(self.eastern)
-                df['time'] = df['t'].dt.strftime('%H:%M')
+            if data.get('results'):
+                # Process the grouped data
+                quotes_data = {}
+                for result in data['results']:
+                    ticker = result.get('T', '')
+                    if ticker:
+                        quotes_data[ticker] = {
+                            'o': result.get('o', 0),
+                            'h': result.get('h', 0),
+                            'l': result.get('l', 0),
+                            'c': result.get('c', 0),
+                            'v': result.get('v', 0),
+                            'pc': result.get('pc', 0),  # Previous close
+                            'date': date
+                        }
                 
-                # Get market open price
-                market_data = df[df['t'].dt.time >= time(9, 30)]
-                if not market_data.empty:
-                    open_price = market_data.iloc[0]['o']
-                    
-                    # Calculate price change from open
-                    price_changes = []
-                    for _, row in df.iterrows():
-                        if row['t'].time() >= time(9, 30) and row['t'].time() <= time(16, 0):
-                            pct_change = ((row['c'] - open_price) / open_price) * 100
-                            price_changes.append({
-                                'time': row['time'],
-                                'price_change_pct': pct_change
-                            })
-                    
-                    return price_changes
-                    
+                return self.process_daily_gappers(quotes_data)
+            
         except Exception as e:
-            logging.error(f"Error fetching intraday data for {ticker}: {e}")
+            print(f"Error fetching data for {date}: {e}")
             
         return []
     
-    def initial_historical_load(self, months=12):
-        """Load historical data for the specified number of months"""
-        logging.info(f"Starting initial historical load for {months} months...")
+    def process_daily_gappers(self, quotes_data):
+        """Process quotes data to find genuine gappers (excluding splits)"""
+        gappers = []
         
-        end_date = datetime.now(self.eastern)
-        start_date = end_date - timedelta(days=30 * months)
-        
-        all_data = {
-            'monthlyData': [],
-            'lastGaps': [],
-            'overallStats': {},
-            'last_updated': datetime.now().isoformat()
-        }
-        
-        # Process each month
-        current_date = start_date
-        monthly_aggregates = {}
-        
-        while current_date <= end_date:
-            if current_date.weekday() < 5:  # Weekday
-                date_str = current_date.strftime('%Y-%m-%d')
-                month_key = current_date.strftime('%Y-%m')
+        for ticker, data in quotes_data.items():
+            try:
+                # Current day data
+                open_price = data.get('o', 0)
+                high = data.get('h', 0)
+                low = data.get('l', 0)
+                close = data.get('c', 0)
+                volume = data.get('v', 0)
+                prev_close = data.get('pc', 0)
                 
-                logging.info(f"Fetching data for {date_str}...")
-                
-                # Get gappers for this day
-                daily_gappers = self.fetch_daily_gappers(date_str)
-                
-                if daily_gappers:
-                    if month_key not in monthly_aggregates:
-                        monthly_aggregates[month_key] = {
-                            'gappers': [],
-                            'intraday_patterns': {}
-                        }
+                if prev_close and prev_close > 0 and open_price > 0:
+                    gap_pct = ((open_price - prev_close) / prev_close) * 100
                     
-                    monthly_aggregates[month_key]['gappers'].extend(daily_gappers)
+                    # CRITICAL: Filter out splits and corporate actions
+                    # Real gaps are typically under 100% (even extreme ones rarely exceed 200%)
+                    # Anything over 300% is almost certainly a split or error
+                    if abs(gap_pct) > 300:
+                        print(f"Skipping {ticker}: {gap_pct:.1f}% gap likely a split/corporate action")
+                        continue
                     
-                    # Get intraday patterns for top gappers (limit API calls)
-                    for gapper in daily_gappers[:3]:  # Top 3 gappers per day
-                        patterns = self.fetch_intraday_patterns(gapper['ticker'], date_str)
+                    # Also check if the ratio suggests a common split
+                    ratio = open_price / prev_close
+                    common_splits = [2.0, 3.0, 4.0, 5.0, 10.0, 0.5, 0.33, 0.25, 0.2, 0.1]
+                    
+                    # Check if ratio is close to a common split ratio
+                    is_split = False
+                    for split_ratio in common_splits:
+                        if abs(ratio - split_ratio) < 0.05:  # 5% tolerance
+                            print(f"Skipping {ticker}: Detected likely {split_ratio}:1 split")
+                            is_split = True
+                            break
+                    
+                    if is_split:
+                        continue
+                    
+                    # Additional sanity check: volume should increase on real gaps
+                    # Splits often show artificially low volume
+                    if gap_pct > 100 and volume < 500000:
+                        print(f"Skipping {ticker}: Large gap with low volume, likely not real")
+                        continue
+                    
+                    # Filter for upward gaps meeting criteria
+                    if gap_pct >= 50 and open_price >= 0.30 and volume >= 1000000:
+                        gappers.append({
+                            'ticker': ticker,
+                            'gap_percentage': round(gap_pct, 2),
+                            'open': open_price,
+                            'high': high,
+                            'low': low,
+                            'close': close,
+                            'price': close,
+                            'volume': volume,
+                            'prev_close': prev_close,
+                            'date': data.get('date', '')
+                        })
                         
-                        for pattern in patterns:
-                            time_key = pattern['time']
-                            if time_key not in monthly_aggregates[month_key]['intraday_patterns']:
-                                monthly_aggregates[month_key]['intraday_patterns'][time_key] = []
-                            monthly_aggregates[month_key]['intraday_patterns'][time_key].append(pattern['price_change_pct'])
-                        
-                        time_module.sleep(0.12)  # Rate limiting
-                
-                time_module.sleep(0.12)  # Rate limiting between days
-            
-            current_date += timedelta(days=1)
+            except Exception as e:
+                print(f"Error processing {ticker}: {e}")
+                continue
         
-        # Process monthly aggregates
-        for month_key, month_data in monthly_aggregates.items():
-            if month_data['gappers']:
-                # Calculate average intraday patterns
-                intraday_avg = []
-                for time_key in sorted(month_data['intraday_patterns'].keys()):
-                    values = month_data['intraday_patterns'][time_key]
-                    intraday_avg.append({
-                        'time': time_key,
-                        'avgPriceChange': np.mean(values),
-                        'volume': len(values) * 1000000
-                    })
-                
-                # Find high/low points
-                if intraday_avg:
-                    high_point = max(intraday_avg, key=lambda x: x['avgPriceChange'])
-                    low_point = min(intraday_avg, key=lambda x: x['avgPriceChange'])
-                    
-                    month_date = datetime.strptime(month_key + '-01', '%Y-%m-%d')
-                    
-                    all_data['monthlyData'].append({
-                        'month': month_date.strftime('%b'),
-                        'year': month_date.year,
-                        'intradayData': intraday_avg,
-                        'statistics': {
-                            'totalGappers': len(month_data['gappers']),
-                            'avgOpenToClose': intraday_avg[-1]['avgPriceChange'] if intraday_avg else 0,
-                            'medianHighTime': high_point['time'],
-                            'medianHighValue': high_point['avgPriceChange'],
-                            'medianLowValue': low_point['avgPriceChange'],
-                            'profitableShorts': sum(1 for g in month_data['gappers'] if g['gap_percentage'] < 0) / len(month_data['gappers']) * 100
-                        }
-                    })
+        # Sort by gap percentage (highest first)
+        gappers.sort(key=lambda x: x['gap_percentage'], reverse=True)
         
-        # Get last 20 gaps from most recent data
-        all_gappers = []
-        for month_data in monthly_aggregates.values():
-            all_gappers.extend(month_data['gappers'])
-        
-        all_gappers.sort(key=lambda x: x['date'], reverse=True)
-        all_data['lastGaps'] = [{
-            'ticker': g['ticker'],
-            'gapPercentage': g['gap_percentage'],
-            'volume': g['volume'],
-            'date': g['date']
-        } for g in all_gappers[:20]]
-        
-        # Calculate overall stats
-        if all_data['monthlyData']:
-            all_data['overallStats'] = {
-                'totalGappers': sum(m['statistics']['totalGappers'] for m in all_data['monthlyData']),
-                'avgOpenToClose': np.mean([m['statistics']['avgOpenToClose'] for m in all_data['monthlyData']]),
-                'medianHighTime': "10:45",
-                'profitableShorts': np.mean([m['statistics']['profitableShorts'] for m in all_data['monthlyData']])
-            }
-        
-        self.save_cache(all_data)
-        logging.info("Initial historical load complete!")
-        return all_data
+        return gappers
     
-    def daily_update(self):
-        """Update cache with today's data"""
-        logging.info("Running daily update...")
-        
-        # Load existing cache
-        cache_data = self.load_cache()
-        if not cache_data:
-            logging.info("No cache found, running initial load...")
-            return self.initial_historical_load()
-        
-        # Get today's data
+    def fetch_todays_gappers(self):
+        """Get today's actual gappers for Last Gaps section"""
         today = datetime.now(self.eastern)
-        date_str = today.strftime('%Y-%m-%d')
         
         # Skip weekends
         if today.weekday() >= 5:
-            logging.info("Weekend - skipping update")
-            return cache_data
+            days_back = today.weekday() - 4
+            today = today - timedelta(days=days_back)
         
-        # Fetch today's gappers
-        today_gappers = self.fetch_daily_gappers(date_str)
+        date_str = today.strftime('%Y-%m-%d')
         
-        if today_gappers:
-            logging.info(f"Found {len(today_gappers)} gappers today")
+        print(f"Fetching today's gappers for {date_str}")
+        gappers = self.fetch_daily_gappers(date_str)
+        
+        # Format for dashboard with dates
+        return [{
+            'ticker': g['ticker'],
+            'gapPercentage': g['gap_percentage'],
+            'volume': g['volume'],
+            'date': g['date'],
+            'open': g['open'],
+            'high': g['high'],
+            'low': g['low'],
+            'close': g['close']
+        } for g in gappers[:20]]  # Top 20 gappers
+    
+    def fetch_intraday_data(self, ticker, date):
+        """Fetch intraday 15-minute data for candlestick charts"""
+        url = f"https://api.polygon.io/v2/aggs/ticker/{ticker}/range/15/minute/{date}/{date}"
+        params = {
+            'adjusted': 'false',
+            'sort': 'asc',
+            'apiKey': self.api_key
+        }
+        
+        try:
+            response = requests.get(url, params=params, timeout=30)
+            response.raise_for_status()
+            data = response.json()
             
-            # Update last gaps
-            cache_data['lastGaps'] = [{
-                'ticker': g['ticker'],
-                'gapPercentage': g['gap_percentage'],
-                'volume': g['volume'],
-                'date': g['date']
-            } for g in today_gappers[:20]]
-            
-            # Update current month's data
-            month_key = today.strftime('%b')
-            year = today.year
-            
-            # Find current month in cache
-            current_month_index = None
-            for i, month_data in enumerate(cache_data['monthlyData']):
-                if month_data['month'] == month_key and month_data['year'] == year:
-                    current_month_index = i
-                    break
-            
-            # Collect intraday patterns for today
-            intraday_patterns = {}
-            for gapper in today_gappers[:5]:  # Top 5 gappers
-                patterns = self.fetch_intraday_patterns(gapper['ticker'], date_str)
+            if data.get('results'):
+                # Filter for market hours (4 AM to 10 PM ET)
+                candles = []
+                for candle in data['results']:
+                    timestamp = candle['t']
+                    dt = datetime.fromtimestamp(timestamp/1000, tz=self.eastern)
+                    hour = dt.hour
+                    
+                    # Include data from 4 AM to 10 PM
+                    if 4 <= hour < 22:
+                        candles.append({
+                            'time': dt.strftime('%H:%M'),
+                            'timestamp': timestamp,
+                            'open': candle['o'],
+                            'high': candle['h'],
+                            'low': candle['l'],
+                            'close': candle['c'],
+                            'volume': candle['v']
+                        })
                 
-                for pattern in patterns:
-                    time_key = pattern['time']
-                    if time_key not in intraday_patterns:
-                        intraday_patterns[time_key] = []
-                    intraday_patterns[time_key].append(pattern['price_change_pct'])
+                return candles
                 
-                time_module.sleep(0.12)
+        except Exception as e:
+            print(f"Error fetching intraday data for {ticker} on {date}: {e}")
             
-            # Calculate today's averages
-            if intraday_patterns:
-                intraday_avg = []
-                for time_key in sorted(intraday_patterns.keys()):
-                    values = intraday_patterns[time_key]
-                    intraday_avg.append({
-                        'time': time_key,
-                        'avgPriceChange': np.mean(values),
-                        'volume': len(values) * 1000000
-                    })
+        return []
+    
+    def daily_update(self):
+        """Main update function - runs daily"""
+        print(f"Starting daily update at {datetime.now()}")
+        
+        # Initialize cache structure
+        cache_data = {
+            'lastUpdated': datetime.now().isoformat(),
+            'gappers': {},
+            'stats': {},
+            'lastGaps': [],
+            'intradayData': {}
+        }
+        
+        # Get today's real gappers for Last Gaps section
+        print("Fetching today's gappers for Last Gaps...")
+        todays_gappers = self.fetch_todays_gappers()
+        cache_data['lastGaps'] = todays_gappers
+        
+        # Get historical data for past 90 days
+        trading_days = self.get_trading_days(90)
+        all_gappers = []
+        daily_counts = []
+        
+        print(f"Fetching data for {len(trading_days)} trading days...")
+        
+        for i, date in enumerate(trading_days):
+            if i % 10 == 0:
+                print(f"Processing day {i+1}/{len(trading_days)}...")
                 
-                # Update or create month data
-                if current_month_index is not None:
-                    # Merge with existing data
-                    existing_data = cache_data['monthlyData'][current_month_index]['intradayData']
-                    
-                    # Weighted average of existing and new data
-                    for new_point in intraday_avg:
-                        found = False
-                        for existing_point in existing_data:
-                            if existing_point['time'] == new_point['time']:
-                                # Average the values
-                                existing_point['avgPriceChange'] = (existing_point['avgPriceChange'] + new_point['avgPriceChange']) / 2
-                                found = True
-                                break
-                        
-                        if not found:
-                            existing_data.append(new_point)
-                    
-                    # Re-sort by time
-                    existing_data.sort(key=lambda x: x['time'])
-                    
-                    # Update statistics
-                    cache_data['monthlyData'][current_month_index]['statistics']['totalGappers'] += len(today_gappers)
-                    
-                else:
-                    # Create new month entry
-                    high_point = max(intraday_avg, key=lambda x: x['avgPriceChange'])
-                    low_point = min(intraday_avg, key=lambda x: x['avgPriceChange'])
-                    
-                    cache_data['monthlyData'].append({
-                        'month': month_key,
-                        'year': year,
-                        'intradayData': intraday_avg,
-                        'statistics': {
-                            'totalGappers': len(today_gappers),
-                            'avgOpenToClose': intraday_avg[-1]['avgPriceChange'] if intraday_avg else 0,
-                            'medianHighTime': high_point['time'],
-                            'medianHighValue': high_point['avgPriceChange'],
-                            'medianLowValue': low_point['avgPriceChange'],
-                            'profitableShorts': sum(1 for g in today_gappers if g['gap_percentage'] < 0) / len(today_gappers) * 100
-                        }
-                    })
+            gappers = self.fetch_daily_gappers(date)
             
-            # Update overall stats
-            cache_data['overallStats'] = {
-                'totalGappers': sum(m['statistics']['totalGappers'] for m in cache_data['monthlyData']),
-                'avgOpenToClose': np.mean([m['statistics']['avgOpenToClose'] for m in cache_data['monthlyData']]),
-                'medianHighTime': "10:45",
-                'profitableShorts': np.mean([m['statistics']['profitableShorts'] for m in cache_data['monthlyData']])
+            if gappers:
+                all_gappers.extend(gappers)
+                daily_counts.append({
+                    'date': date,
+                    'count': len(gappers)
+                })
+                
+                # Store gappers by date
+                cache_data['gappers'][date] = gappers[:50]  # Top 50 per day
+            
+            # Rate limit: 5 requests per second on free tier
+            time.sleep(0.2)
+        
+        # Calculate statistics
+        if all_gappers:
+            # Average gaps per day
+            avg_gaps_per_day = len(all_gappers) / len(trading_days)
+            
+            # Find biggest gappers
+            all_gappers.sort(key=lambda x: x['gap_percentage'], reverse=True)
+            top_gappers = all_gappers[:100]
+            
+            # Ticker frequency
+            ticker_counts = defaultdict(int)
+            for gapper in all_gappers:
+                ticker_counts[gapper['ticker']] += 1
+            
+            most_frequent = sorted(ticker_counts.items(), key=lambda x: x[1], reverse=True)[:20]
+            
+            cache_data['stats'] = {
+                'averageGapsPerDay': round(avg_gaps_per_day, 2),
+                'totalGappers': len(all_gappers),
+                'biggestGappers': top_gappers,
+                'mostFrequent': [{'ticker': t, 'count': c} for t, c in most_frequent],
+                'dailyCounts': daily_counts
             }
-            
-            cache_data['last_updated'] = datetime.now().isoformat()
-            
-            self.save_cache(cache_data)
-            logging.info("Daily update complete!")
         
-        return cache_data
+        # Fetch intraday data for today's top gappers
+        if todays_gappers:
+            print("Fetching intraday data for top gappers...")
+            today_str = datetime.now(self.eastern).strftime('%Y-%m-%d')
+            
+            for i, gapper in enumerate(todays_gappers[:5]):  # Top 5 for intraday
+                ticker = gapper['ticker']
+                print(f"Fetching intraday data for {ticker}...")
+                
+                intraday = self.fetch_intraday_data(ticker, today_str)
+                if intraday:
+                    cache_data['intradayData'][ticker] = {
+                        'data': intraday,
+                        'date': today_str,
+                        'gapPercentage': gapper['gapPercentage']
+                    }
+                
+                time.sleep(0.2)  # Rate limit
+        
+        # Save to cache file
+        with open(self.cache_file, 'w') as f:
+            json.dump(cache_data, f, indent=2)
+            
+        print(f"Update complete! Data saved to {self.cache_file}")
+        print(f"Found {len(all_gappers)} total gappers over {len(trading_days)} days")
+        print(f"Today's gappers: {len(todays_gappers)}")
+        
+    def test_connection(self):
+        """Test API connection"""
+        url = "https://api.polygon.io/v1/marketstatus/now"
+        params = {'apiKey': self.api_key}
+        
+        try:
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            print("API connection successful!")
+            print(f"Market status: {json.dumps(data, indent=2)}")
+            return True
+        except Exception as e:
+            print(f"API connection failed: {e}")
+            return False
 
 def main():
-    # Get API key from environment variable
-    API_KEY = os.environ.get('POLYGON_API_KEY')
+    """Main entry point"""
+    updater = GapDataUpdater()
     
-    if not API_KEY:
-        print("Error: POLYGON_API_KEY not set")
-        return
+    # Test connection first
+    if not updater.test_connection():
+        sys.exit(1)
     
-    manager = GapperDataManager(API_KEY)
-    
-    # Check if we need initial load or just daily update
-    cache_data = manager.load_cache()
-    
-    if not cache_data:
-        print("No cache found - running initial historical load...")
-        manager.initial_historical_load(months=12)
-    else:
-        print("Cache found - running daily update...")
-        manager.daily_update()
+    # Run daily update
+    updater.daily_update()
 
 if __name__ == "__main__":
     main()
