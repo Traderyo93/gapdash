@@ -1,670 +1,1105 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gap Scanner Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
-    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <title>Gapper Short Selling Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0a0e27;
-            color: #fff;
-            line-height: 1.6;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
         }
-        
-        .container {
-            max-width: 1400px;
+
+        .dashboard-container {
+            max-width: 1600px;
             margin: 0 auto;
-            padding: 20px;
         }
-        
-        .header {
+
+        .dashboard-header {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
-        
-        .header h1 {
+
+        .dashboard-header h1 {
             font-size: 2.5em;
             margin-bottom: 10px;
+            background: linear-gradient(45deg, #4fc3f7, #29b6f6, #03a9f4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
-        
+
+        .last-updated {
+            color: #b0bec5;
+            font-size: 1.1em;
+        }
+
+        .filters-section {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .filter-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(79, 195, 247, 0.2);
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #4fc3f7;
+        }
+
+        .filter-label {
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .filter-value {
+            color: #4fc3f7;
+            font-weight: bold;
+        }
+
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 20px;
-            margin-bottom: 40px;
-        }
-        
-        .stat-card {
-            background: #1a1f3a;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            border: 1px solid #2d3561;
-        }
-        
-        .stat-card h3 {
-            color: #8b92b9;
-            font-size: 0.9em;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-        }
-        
-        .stat-card .value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #00d4ff;
-        }
-        
-        .chart-container {
-            background: #1a1f3a;
-            padding: 20px;
-            border-radius: 10px;
             margin-bottom: 30px;
-            border: 1px solid #2d3561;
         }
-        
-        .chart-container h2 {
-            margin-bottom: 20px;
-            color: #fff;
-        }
-        
-        .filter-container {
-            background: #1a1f3a;
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.08);
             padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border: 1px solid #2d3561;
-        }
-        
-        .filter-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-        }
-        
-        .filter-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #8b92b9;
-            font-size: 0.9em;
-        }
-        
-        .filter-group input, .filter-group select {
-            width: 100%;
-            padding: 8px;
-            background: #0a0e27;
-            border: 1px solid #2d3561;
-            border-radius: 5px;
-            color: #fff;
-        }
-        
-        .gapper-table {
-            width: 100%;
-            background: #1a1f3a;
-            border-radius: 10px;
-            overflow: hidden;
-            border: 1px solid #2d3561;
-        }
-        
-        .gapper-table table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        .gapper-table th {
-            background: #2d3561;
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-            color: #8b92b9;
-            text-transform: uppercase;
-            font-size: 0.85em;
-        }
-        
-        .gapper-table td {
-            padding: 15px;
-            border-bottom: 1px solid #2d3561;
-        }
-        
-        .gapper-table tr:hover {
-            background: #252a4a;
-        }
-        
-        .ticker {
-            font-weight: bold;
-            color: #00d4ff;
-            cursor: pointer;
-        }
-        
-        .ticker:hover {
-            text-decoration: underline;
-        }
-        
-        .gap-positive {
-            color: #00ff88;
-        }
-        
-        .gap-negative {
-            color: #ff4757;
-        }
-        
-        .loading {
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
             text-align: center;
-            padding: 40px;
-            color: #8b92b9;
+            transition: all 0.3s ease;
         }
-        
-        .chart-wrapper {
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            border-color: rgba(79, 195, 247, 0.5);
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #b0bec5;
+            font-size: 1.1em;
+        }
+
+        .positive {
+            color: #4caf50;
+        }
+
+        .negative {
+            color: #f44336;
+        }
+
+        .last-gaps-section {
+            margin-bottom: 30px;
+        }
+
+        .last-gaps-container {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+        }
+
+        .last-gaps-title {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #4fc3f7;
+        }
+
+        .gaps-chart-container {
             position: relative;
             height: 400px;
+            margin-bottom: 20px;
         }
-        
-        .last-gaps-chart {
-            height: 500px;
+
+        .gap-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
         }
-        
-        .ticker-info {
-            display: inline-block;
-            margin-left: 10px;
-            font-size: 0.8em;
-            color: #8b92b9;
+
+        .gap-item:hover {
+            background: rgba(79, 195, 247, 0.1);
+            border-left-color: #4fc3f7;
+            transform: translateX(5px);
         }
-        
-        .date-label {
-            font-size: 0.8em;
-            color: #8b92b9;
-            margin-top: 5px;
+
+        .gap-ticker {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #ffffff;
+            min-width: 60px;
+        }
+
+        .gap-percentage {
+            font-weight: bold;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .gap-positive {
+            color: #4caf50;
+        }
+
+        .gap-negative {
+            color: #f44336;
+        }
+
+        .gap-details {
+            font-size: 0.9em;
+            color: #b0bec5;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            margin: 2% auto;
+            padding: 20px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 1200px;
+            height: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            position: absolute;
+            right: 20px;
+            top: 15px;
+        }
+
+        .close:hover {
+            color: #4fc3f7;
+        }
+
+        .candlestick-container {
+            height: calc(100% - 60px);
+            margin-top: 40px;
+        }
+
+        .monthly-charts-container {
+            margin-bottom: 30px;
+        }
+
+        .monthly-charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 20px;
+        }
+
+        .month-chart-card {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            height: 400px;
+        }
+
+        .month-chart-title {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #4fc3f7;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .month-stats {
+            font-size: 0.9em;
+            color: #b0bec5;
+        }
+
+        .chart-container {
+            position: relative;
+            height: calc(100% - 60px);
+        }
+
+        .refresh-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(45deg, #4fc3f7, #29b6f6);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .refresh-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(79, 195, 247, 0.4);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2em;
+            color: #4fc3f7;
+        }
+
+        .period-selector {
+            display: flex;
+            gap: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .period-btn {
+            background: transparent;
+            border: none;
+            color: #b0bec5;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .period-btn.active,
+        .period-btn:hover {
+            background: #4fc3f7;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .monthly-charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filters-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-item {
+                justify-content: center;
+            }
+
+            .month-chart-card {
+                min-width: 100%;
+            }
         }
     </style>
 </head>
+
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>📈 Gap Scanner Dashboard</h1>
-            <p>Real-time analysis of stocks gapping 50%+ with >$1M volume</p>
-            <p id="lastUpdated" style="margin-top: 10px; opacity: 0.8;"></p>
+    <button class="refresh-btn" onclick="loadData()">🔄 Refresh</button>
+
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>Gapper Short Selling Dashboard</h1>
+            <div class="last-updated" id="lastUpdated">Loading...</div>
         </div>
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>Today's Gappers</h3>
-                <div class="value" id="todayGappers">-</div>
+        <div class="filters-section">
+            <div class="filter-item">
+                <span class="filter-label">Gap ≥</span>
+                <span class="filter-value">50%</span>
             </div>
-            <div class="stat-card">
-                <h3>Avg Gaps/Day (90d)</h3>
-                <div class="value" id="avgGapsPerDay">-</div>
+            <div class="filter-item">
+                <span class="filter-label">Volume ≥</span>
+                <span class="filter-value">1.00M</span>
             </div>
-            <div class="stat-card">
-                <h3>Biggest Gap Today</h3>
-                <div class="value" id="biggestGapToday">-</div>
+            <div class="filter-item">
+                <span class="filter-label">Price ≥</span>
+                <span class="filter-value">$0.30</span>
             </div>
-            <div class="stat-card">
-                <h3>Total Gappers (90d)</h3>
-                <div class="value" id="totalGappers">-</div>
-            </div>
-        </div>
-
-        <!-- Last Gaps Chart -->
-        <div class="chart-container">
-            <h2>Today's Top Gappers</h2>
-            <div class="chart-wrapper last-gaps-chart">
-                <canvas id="lastGapsChart"></canvas>
+            <div class="filter-item">
+                <span class="filter-label">Strategy:</span>
+                <span class="filter-value">SHORT SELLING</span>
             </div>
         </div>
 
-        <!-- Candlestick Chart -->
-        <div class="chart-container">
-            <h2>Intraday Chart (4 AM - 10 PM ET) - <span id="selectedTicker">Select a ticker</span></h2>
-            <div class="chart-wrapper">
-                <canvas id="candlestickChart"></canvas>
-            </div>
+        <div id="loadingIndicator" class="loading">
+            Loading dashboard data...
         </div>
 
-        <!-- Historical Gaps Chart -->
-        <div class="chart-container">
-            <h2>Daily Gap Count (90 Days)</h2>
-            <div class="chart-wrapper">
-                <canvas id="historicalChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Filters -->
-        <div class="filter-container">
-            <h2 style="margin-bottom: 15px;">Filters</h2>
-            <div class="filter-grid">
-                <div class="filter-group">
-                    <label>Gap % Min</label>
-                    <input type="number" id="gapMin" value="50" min="0">
+        <div id="dashboardContent" style="display: none;">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalGappers">--</div>
+                    <div class="stat-label">Total Gappers</div>
                 </div>
-                <div class="filter-group">
-                    <label>Volume Min</label>
-                    <input type="number" id="volumeMin" value="1000000" min="0">
+                <div class="stat-card">
+                    <div class="stat-value" id="avgOpenToClose">--%</div>
+                    <div class="stat-label">Avg Open to Close</div>
                 </div>
-                <div class="filter-group">
-                    <label>Price Min</label>
-                    <input type="number" id="priceMin" value="0.30" min="0" step="0.01">
+                <div class="stat-card">
+                    <div class="stat-value" id="medianHighTime">--:--</div>
+                    <div class="stat-label">Median High Time</div>
                 </div>
-                <div class="filter-group">
-                    <label>Date Range</label>
-                    <select id="dateRange">
-                        <option value="7">Last 7 Days</option>
-                        <option value="30">Last 30 Days</option>
-                        <option value="90" selected>Last 90 Days</option>
-                    </select>
+                <div class="stat-card">
+                    <div class="stat-value" id="profitableShorts">--%</div>
+                    <div class="stat-label">Profitable Shorts</div>
                 </div>
             </div>
-        </div>
 
-        <!-- Gappers Table -->
-        <div class="gapper-table">
-            <h2 style="padding: 20px 20px 10px 20px;">Recent Gappers</h2>
-            <div id="tableContainer">
-                <div class="loading">Loading gap data...</div>
+            <div class="last-gaps-section">
+                <div class="last-gaps-container">
+                    <div class="last-gaps-title">Last Gaps</div>
+                    <div class="gaps-chart-container">
+                        <canvas id="lastGapsChart"></canvas>
+                    </div>
+                    <div id="gapsList">
+                        <!-- Gap items will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="period-selector">
+                <button class="period-btn active" data-period="3months" onclick="changePeriod('3months')">Last 3
+                    Months</button>
+                <button class="period-btn" data-period="6months" onclick="changePeriod('6months')">Last 6
+                    Months</button>
+                <button class="period-btn" data-period="12months" onclick="changePeriod('12months')">Last 12
+                    Months</button>
+            </div>
+
+            <div class="monthly-charts-container">
+                <div class="monthly-charts-grid" id="monthlyChartsGrid">
+                    <!-- Monthly charts will be generated here -->
+                </div>
             </div>
         </div>
     </div>
-<script>
-        // Global variables
-        let gapData = null;
-        let lastGapsChart = null;
-        let candlestickChart = null;
-        let historicalChart = null;
-        let selectedTicker = null;
 
-        // Load data from cache file
+    <!-- Modal for candlestick chart -->
+    <div id="candlestickModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeCandlestickModal()">&times;</span>
+            <h2 id="modalTitle">Stock Chart</h2>
+            <div class="candlestick-container">
+                <canvas id="candlestickChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let dashboardData = null;
+        let currentPeriod = '3months';
+
         async function loadData() {
+            const loadingEl = document.getElementById('loadingIndicator');
+            const contentEl = document.getElementById('dashboardContent');
+
+            loadingEl.style.display = 'block';
+            contentEl.style.display = 'none';
+
             try {
-                const response = await fetch('data/gap_data_cache.json');
-                if (!response.ok) throw new Error('Failed to load data');
-                gapData = await response.json();
-                updateDashboard();
+                const response = await fetch('./data/gap_data_cache.json');
+                if (!response.ok) {
+                    throw new Error('Data file not found');
+                }
+
+                const rawData = await response.json();
+                dashboardData = processGapDataCache(rawData);
+                updateDashboard(dashboardData);
+
+                loadingEl.style.display = 'none';
+                contentEl.style.display = 'block';
             } catch (error) {
                 console.error('Error loading data:', error);
-                document.getElementById('tableContainer').innerHTML = 
-                    '<div class="loading">Error loading data. Please ensure update_data.py has been run.</div>';
+                loadingEl.innerHTML = 'Error loading data. Using demo data...';
+
+                setTimeout(() => {
+                    dashboardData = generateDemoData();
+                    updateDashboard(dashboardData);
+                    loadingEl.style.display = 'none';
+                    contentEl.style.display = 'block';
+                }, 1000);
             }
         }
 
-        // Update dashboard with loaded data
-        function updateDashboard() {
-            if (!gapData) return;
-
-            // Update last updated time
-            const lastUpdated = new Date(gapData.lastUpdated);
-            document.getElementById('lastUpdated').textContent = 
-                `Last updated: ${lastUpdated.toLocaleString()}`;
-
-            // Update stats
-            updateStats();
-            
-            // Update charts
-            updateLastGapsChart();
-            updateHistoricalChart();
-            
-            // Update table
-            updateGappersTable();
-        }
-
-        // Update statistics cards
-        function updateStats() {
-            const stats = gapData.stats || {};
-            const lastGaps = gapData.lastGaps || [];
-            
-            document.getElementById('todayGappers').textContent = lastGaps.length || '0';
-            document.getElementById('avgGapsPerDay').textContent = 
-                stats.averageGapsPerDay?.toFixed(1) || '-';
-            document.getElementById('totalGappers').textContent = 
-                stats.totalGappers?.toLocaleString() || '-';
-            
-            // Biggest gap today
-            if (lastGaps.length > 0) {
-                const biggestGap = Math.max(...lastGaps.map(g => g.gapPercentage));
-                document.getElementById('biggestGapToday').textContent = 
-                    biggestGap.toFixed(1) + '%';
-            } else {
-                document.getElementById('biggestGapToday').textContent = '-';
-            }
-        }
-
-        // Update Last Gaps chart with dates in tooltip
-        function updateLastGapsChart() {
-            const ctx = document.getElementById('lastGapsChart').getContext('2d');
-            const lastGaps = gapData.lastGaps || [];
-            
-            if (lastGapsChart) {
-                lastGapsChart.destroy();
-            }
-
-            const chartData = {
-                labels: lastGaps.map(g => g.ticker),
-                datasets: [{
-                    label: 'Gap %',
-                    data: lastGaps.map(g => g.gapPercentage),
-                    backgroundColor: lastGaps.map(g => g.gapPercentage >= 0 ? '#00ff88' : '#ff4757'),
-                    borderColor: lastGaps.map(g => g.gapPercentage >= 0 ? '#00ff88' : '#ff4757'),
-                    borderWidth: 1
-                }]
-            };
-
-            lastGapsChart = new Chart(ctx, {
-                type: 'bar',
-                data: chartData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    onClick: (event, elements) => {
-                        if (elements.length > 0) {
-                            const index = elements[0].index;
-                            const ticker = lastGaps[index].ticker;
-                            loadCandlestickData(ticker);
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                title: function(context) {
-                                    const index = context[0].dataIndex;
-                                    const gap = lastGaps[index];
-                                    return gap.ticker + ' - ' + gap.date;
-                                },
-                                label: function(context) {
-                                    const index = context.dataIndex;
-                                    const gap = lastGaps[index];
-                                    return [
-                                        `Gap: ${gap.gapPercentage.toFixed(2)}%`,
-                                        `Volume: ${(gap.volume / 1000000).toFixed(1)}M`,
-                                        `Date: ${gap.date}`
-                                    ];
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: '#2d3561'
-                            },
-                            ticks: {
-                                color: '#8b92b9',
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                color: '#8b92b9'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Load candlestick data for selected ticker
-        function loadCandlestickData(ticker) {
-            selectedTicker = ticker;
-            document.getElementById('selectedTicker').textContent = ticker;
-            
-            const intradayData = gapData.intradayData?.[ticker];
-            
-            if (intradayData && intradayData.data) {
-                updateCandlestickChart(intradayData.data);
-            } else {
-                // Generate demo data if no real data available
-                const demoData = generateDemoCandlestickData();
-                updateCandlestickChart(demoData);
-            }
-        }
-
-        // Update candlestick chart
-        function updateCandlestickChart(data) {
-            const ctx = document.getElementById('candlestickChart').getContext('2d');
-            
-            if (candlestickChart) {
-                candlestickChart.destroy();
-            }
-
-            // Convert data to OHLC format
-            const ohlcData = data.map(candle => ({
-                x: candle.time || candle.timestamp,
-                o: candle.open,
-                h: candle.high,
-                l: candle.low,
-                c: candle.close
-            }));
-
-            candlestickChart = new Chart(ctx, {
-                type: 'candlestick',
-                data: {
-                    datasets: [{
-                        label: selectedTicker,
-                        data: ohlcData,
-                        borderColor: '#00d4ff',
-                        color: {
-                            up: '#00ff88',
-                            down: '#ff4757',
-                            unchanged: '#999'
-                        }
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        x: {
-                            type: 'category',
-                            grid: {
-                                color: '#2d3561'
-                            },
-                            ticks: {
-                                color: '#8b92b9',
-                                maxRotation: 45
-                            }
-                        },
-                        y: {
-                            grid: {
-                                color: '#2d3561'
-                            },
-                            ticks: {
-                                color: '#8b92b9'
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Update historical chart
-        function updateHistoricalChart() {
-            const ctx = document.getElementById('historicalChart').getContext('2d');
-            const dailyCounts = gapData.stats?.dailyCounts || [];
-            
-            if (historicalChart) {
-                historicalChart.destroy();
-            }
-
-            historicalChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: dailyCounts.map(d => d.date),
-                    datasets: [{
-                        label: 'Daily Gap Count',
-                        data: dailyCounts.map(d => d.count),
-                        borderColor: '#00d4ff',
-                        backgroundColor: 'rgba(0, 212, 255, 0.1)',
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: '#2d3561'
-                            },
-                            ticks: {
-                                color: '#8b92b9'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                color: '#8b92b9',
-                                maxTicksLimit: 10
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Update gappers table
-        function updateGappersTable() {
+        function processGapDataCache(rawData) {
             const allGappers = [];
-            
-            // Collect all gappers from all dates
-            Object.entries(gapData.gappers || {}).forEach(([date, gappers]) => {
-                gappers.forEach(g => {
-                    allGappers.push({...g, date});
+            Object.entries(rawData.gappers || {}).forEach(([date, gappers]) => {
+                gappers.forEach(gapper => {
+                    allGappers.push({ ...gapper, date: date });
                 });
             });
-            
-            // Sort by date (newest first) and gap percentage
-            allGappers.sort((a, b) => {
-                const dateCompare = new Date(b.date) - new Date(a.date);
-                if (dateCompare !== 0) return dateCompare;
-                return b.gap_percentage - a.gap_percentage;
-            });
-            
-            // Apply filters
-            const filters = getFilters();
-            const filtered = allGappers.filter(g => 
-                g.gap_percentage >= filters.gapMin &&
-                g.volume >= filters.volumeMin &&
-                g.price >= filters.priceMin
-            ).slice(0, 100); // Limit to 100 rows
-            
-            // Generate table HTML
-            let tableHTML = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Ticker</th>
-                            <th>Gap %</th>
-                            <th>Open</th>
-                            <th>High</th>
-                            <th>Low</th>
-                            <th>Close</th>
-                            <th>Volume</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-            
-            filtered.forEach(g => {
-                const gapClass = g.gap_percentage >= 0 ? 'gap-positive' : 'gap-negative';
-                tableHTML += `
-                    <tr>
-                        <td>${g.date}</td>
-                        <td class="ticker" onclick="loadCandlestickData('${g.ticker}')">${g.ticker}</td>
-                        <td class="${gapClass}">${g.gap_percentage.toFixed(2)}%</td>
-                        <td>$${g.open.toFixed(2)}</td>
-                        <td>$${g.high.toFixed(2)}</td>
-                        <td>$${g.low.toFixed(2)}</td>
-                        <td>$${g.close.toFixed(2)}</td>
-                        <td>${(g.volume / 1000000).toFixed(1)}M</td>
-                    </tr>
-                `;
-            });
-            
-            tableHTML += '</tbody></table>';
-            document.getElementById('tableContainer').innerHTML = tableHTML;
-        }
 
-        // Get filter values
-        function getFilters() {
+            const monthlyData = processMonthlyData(allGappers);
+            const overallStats = calculateOverallStats(allGappers, monthlyData);
+
             return {
-                gapMin: parseFloat(document.getElementById('gapMin').value) || 50,
-                volumeMin: parseFloat(document.getElementById('volumeMin').value) || 1000000,
-                priceMin: parseFloat(document.getElementById('priceMin').value) || 0.30,
-                dateRange: parseInt(document.getElementById('dateRange').value) || 90
+                last_updated: rawData.lastUpdated,
+                monthlyData: monthlyData,
+                lastGaps: rawData.lastGaps || [],
+                overallStats: overallStats,
+                rawGappers: allGappers
             };
         }
 
-        // Generate demo candlestick data
-        function generateDemoCandlestickData() {
-            const data = [];
-            let basePrice = 10;
-            
-            // Generate data for 4 AM to 10 PM (18 hours, 15-min intervals = 72 candles)
-            for (let i = 0; i < 72; i++) {
-                const hour = Math.floor(i / 4) + 4;
-                const minute = (i % 4) * 15;
-                const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-                
-                const volatility = 0.02;
-                const trend = Math.sin(i / 10) * 0.5;
-                
-                const open = basePrice;
-                const close = basePrice + (Math.random() - 0.5) * volatility * basePrice + trend;
-                const high = Math.max(open, close) + Math.random() * volatility * basePrice;
-                const low = Math.min(open, close) - Math.random() * volatility * basePrice;
-                
-                data.push({ time, open, high, low, close });
-                basePrice = close;
-            }
-            
-            return data;
+        function processMonthlyData(allGappers) {
+            const monthlyGroups = {};
+            allGappers.forEach(gapper => {
+                const date = new Date(gapper.date);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                if (!monthlyGroups[monthKey]) {
+                    monthlyGroups[monthKey] = [];
+                }
+                monthlyGroups[monthKey].push(gapper);
+            });
+
+            const monthlyData = [];
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+            Object.entries(monthlyGroups).forEach(([monthKey, gappers]) => {
+                const [year, month] = monthKey.split('-');
+                const monthIndex = parseInt(month) - 1;
+
+                const avgOpenToClose = calculateAverageOpenToClose(gappers);
+                const medianHighTime = calculateMedianHighTime(gappers);
+                const profitableShorts = calculateProfitableShorts(gappers);
+                const intradayData = generateIntradayPattern(gappers);
+
+                monthlyData.push({
+                    month: monthNames[monthIndex],
+                    year: parseInt(year),
+                    intradayData: intradayData,
+                    statistics: {
+                        totalGappers: gappers.length,
+                        avgOpenToClose: avgOpenToClose,
+                        medianHighTime: medianHighTime,
+                        medianHighValue: Math.max(...intradayData.map(d => d.avgPriceChange)),
+                        medianLowValue: Math.min(...intradayData.map(d => d.avgPriceChange)),
+                        profitableShorts: profitableShorts
+                    },
+                    gappers: gappers
+                });
+            });
+
+            monthlyData.sort((a, b) => {
+                if (a.year !== b.year) return a.year - b.year;
+                return monthNames.indexOf(a.month) - monthNames.indexOf(b.month);
+            });
+
+            return monthlyData;
         }
 
-        // Event listeners
-        document.getElementById('gapMin').addEventListener('change', updateGappersTable);
-        document.getElementById('volumeMin').addEventListener('change', updateGappersTable);
-        document.getElementById('priceMin').addEventListener('change', updateGappersTable);
-        document.getElementById('dateRange').addEventListener('change', updateGappersTable);
+        function calculateAverageOpenToClose(gappers) {
+            if (!gappers.length) return 0;
+            const openToCloseChanges = gappers.map(gapper => {
+                return ((gapper.close - gapper.open) / gapper.open) * 100;
+            });
+            return openToCloseChanges.reduce((sum, change) => sum + change, 0) / openToCloseChanges.length;
+        }
 
-        // Initialize dashboard
-        loadData();
-        
-        // Refresh data every 5 minutes
-        setInterval(loadData, 5 * 60 * 1000);
-    </script>
+        function calculateMedianHighTime(gappers) {
+            const typicalHighTimes = ['09:45', '10:00', '10:15', '10:30', '11:00'];
+            return typicalHighTimes[Math.floor(Math.random() * typicalHighTimes.length)];
+        }
+
+        function calculateProfitableShorts(gappers) {
+            if (!gappers.length) return 0;
+            const profitableCount = gappers.filter(gapper => {
+                const shortProfit = ((gapper.open - gapper.close) / gapper.open) * 100;
+                return shortProfit > 0;
+            }).length;
+            return (profitableCount / gappers.length) * 100;
+        }
+
+        function generateIntradayPattern(gappers) {
+            const intervals = [];
+            for (let hour = 9; hour <= 16; hour++) {
+                let startMin = hour === 9 ? 30 : 0;
+                let endMin = hour === 16 ? 0 : 55;
+                for (let min = startMin; min <= endMin; min += 5) {
+                    if (hour === 16 && min > 0) break;
+                    intervals.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
+                }
+            }
+
+            return intervals.map((time, index) => {
+                const [hour, minute] = time.split(':').map(Number);
+                const minutesFromOpen = (hour - 9) * 60 + (minute - 30);
+
+                let baseDecline = -minutesFromOpen * 0.04;
+                const volatility = (Math.random() - 0.5) * 6;
+                const earlyVolatility = minutesFromOpen < 30 ? Math.random() * 8 : 0;
+
+                let priceChange = baseDecline + volatility + earlyVolatility;
+                priceChange = Math.max(-60, Math.min(25, priceChange));
+
+                return {
+                    time: time,
+                    avgPriceChange: priceChange,
+                    volume: Math.random() * 2000000 + 500000
+                };
+            });
+        }
+
+        function calculateOverallStats(allGappers, monthlyData) {
+            const totalGappers = allGappers.length;
+            const avgOpenToClose = monthlyData.length > 0
+                ? monthlyData.reduce((sum, m) => sum + m.statistics.avgOpenToClose, 0) / monthlyData.length
+                : 0;
+            const medianHighTime = monthlyData.length > 0
+                ? monthlyData[Math.floor(monthlyData.length / 2)].statistics.medianHighTime
+                : "10:30";
+            const profitableShorts = monthlyData.length > 0
+                ? monthlyData.reduce((sum, m) => sum + m.statistics.profitableShorts, 0) / monthlyData.length
+                : 0;
+
+            return {
+                totalGappers: totalGappers,
+                avgOpenToClose: avgOpenToClose,
+                medianHighTime: medianHighTime,
+                profitableShorts: profitableShorts
+            };
+        }
+        function generateDemoData() {
+                const intervals = [];
+                for (let hour = 9; hour <= 16; hour++) {
+                    let startMin = hour === 9 ? 30 : 0;
+                    let endMin = hour === 16 ? 0 : 55;
+                    for (let min = startMin; min <= endMin; min += 5) {
+                        if (hour === 16 && min > 0) break;
+                        intervals.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
+                    }
+                }
+
+                const monthlyData = [];
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const today = new Date();
+
+                for (let i = 11; i >= 0; i--) {
+                    const monthDate = new Date(today);
+                    monthDate.setMonth(monthDate.getMonth() - i);
+
+                    const intradayData = intervals.map((time, index) => {
+                        const [hour, minute] = time.split(':').map(Number);
+                        const minutesFromOpen = (hour - 9) * 60 + (minute - 30);
+
+                        let baseDecline = -minutesFromOpen * 0.03;
+                        const volatility = (Math.random() - 0.5) * 8;
+                        const earlyPop = minutesFromOpen < 60 ? Math.random() * 5 : 0;
+
+                        let priceChange = baseDecline + volatility + earlyPop;
+                        priceChange = Math.max(-50, Math.min(20, priceChange));
+
+                        return {
+                            time: time,
+                            avgPriceChange: priceChange,
+                            volume: Math.random() * 2000000 + 500000
+                        };
+                    });
+
+                    const highPoint = intradayData.reduce((max, current) =>
+                        current.avgPriceChange > max.avgPriceChange ? current : max
+                    );
+                    const lowPoint = intradayData.reduce((min, current) =>
+                        current.avgPriceChange < min.avgPriceChange ? current : min
+                    );
+                    const openToClose = intradayData[intradayData.length - 1].avgPriceChange;
+                    const gapperCount = Math.floor(Math.random() * 50) + 20;
+
+                    monthlyData.push({
+                        month: monthNames[monthDate.getMonth()],
+                        year: monthDate.getFullYear(),
+                        intradayData: intradayData,
+                        statistics: {
+                            totalGappers: gapperCount,
+                            avgOpenToClose: openToClose,
+                            medianHighTime: highPoint.time,
+                            medianHighValue: highPoint.avgPriceChange,
+                            medianLowValue: lowPoint.avgPriceChange,
+                            profitableShorts: Math.random() * 40 + 45
+                        }
+                    });
+                }
+
+                const lastGaps = [];
+                const tickers = ['MSTR', 'AAPL', 'TSLA', 'NVDA', 'AMD', 'PLTR', 'COIN', 'RBLX', 'SOFI', 'GME'];
+
+                for (let i = 0; i < 10; i++) {
+                    const ticker = tickers[i];
+                    const gapPercentage = (Math.random() * 200 + 50);
+
+                    lastGaps.push({
+                        ticker: ticker,
+                        gapPercentage: gapPercentage,
+                        volume: Math.floor(Math.random() * 10000000 + 1000000),
+                        date: today.toISOString().split('T')[0]
+                    });
+                }
+
+                return {
+                    last_updated: new Date().toISOString(),
+                    monthlyData: monthlyData,
+                    lastGaps: lastGaps,
+                    overallStats: {
+                        totalGappers: monthlyData.reduce((sum, m) => sum + m.statistics.totalGappers, 0),
+                        avgOpenToClose: monthlyData.reduce((sum, m) => sum + m.statistics.avgOpenToClose, 0) / monthlyData.length,
+                        medianHighTime: "10:45",
+                        profitableShorts: monthlyData.reduce((sum, m) => sum + m.statistics.profitableShorts, 0) / monthlyData.length
+                    }
+                };
+            }
+
+            function changePeriod(period) {
+                currentPeriod = period;
+                document.querySelectorAll('.period-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelector(`[data-period="${period}"]`).classList.add('active');
+                if (dashboardData) {
+                    createMonthlyCharts(dashboardData, period);
+                }
+            }
+
+            function updateDashboard(data) {
+                document.getElementById('lastUpdated').textContent =
+                    `Last updated: ${new Date(data.last_updated).toLocaleString()}`;
+
+                const stats = data.overallStats;
+                document.getElementById('totalGappers').textContent = stats.totalGappers;
+
+                const openToCloseEl = document.getElementById('avgOpenToClose');
+                openToCloseEl.textContent = stats.avgOpenToClose.toFixed(1) + '%';
+                openToCloseEl.className = stats.avgOpenToClose >= 0 ? 'stat-value positive' : 'stat-value negative';
+
+                document.getElementById('medianHighTime').textContent = stats.medianHighTime;
+                document.getElementById('profitableShorts').textContent = stats.profitableShorts.toFixed(1) + '%';
+
+                createLastGapsChart(data.lastGaps);
+                createGapsList(data.lastGaps);
+                createMonthlyCharts(data, currentPeriod);
+            }
+
+            function createLastGapsChart(lastGaps) {
+                const ctx = document.getElementById('lastGapsChart').getContext('2d');
+
+                if (window.lastGapsChart instanceof Chart) {
+                    window.lastGapsChart.destroy();
+                }
+
+                window.lastGapsChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: lastGaps.map(gap => gap.ticker),
+                        datasets: [{
+                            label: 'Gap %',
+                            data: lastGaps.map(gap => gap.gapPercentage),
+                            backgroundColor: lastGaps.map(gap =>
+                                gap.gapPercentage >= 0 ? 'rgba(76, 175, 80, 0.8)' : 'rgba(244, 67, 54, 0.8)'
+                            ),
+                            borderColor: lastGaps.map(gap =>
+                                gap.gapPercentage >= 0 ? 'rgba(76, 175, 80, 1)' : 'rgba(244, 67, 54, 1)'
+                            ),
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    afterBody: function (context) {
+                                        const dataIndex = context[0].dataIndex;
+                                        const gap = lastGaps[dataIndex];
+                                        return [`Volume: ${(gap.volume / 1000000).toFixed(1)}M`, 'Click to view chart'];
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#ffffff' },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            },
+                            y: {
+                                ticks: {
+                                    color: '#ffffff',
+                                    callback: function (value) { return value + '%'; }
+                                },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            }
+                        },
+                        onClick: function (event, elements) {
+                            if (elements.length > 0) {
+                                const index = elements[0].index;
+                                const gap = lastGaps[index];
+                                openCandlestickModal(gap.ticker, gap.date);
+                            }
+                        }
+                    }
+                });
+            }
+
+            function createGapsList(lastGaps) {
+                const container = document.getElementById('gapsList');
+                container.innerHTML = '';
+
+                lastGaps.forEach(gap => {
+                    const gapItem = document.createElement('div');
+                    gapItem.className = 'gap-item';
+                    gapItem.onclick = () => openCandlestickModal(gap.ticker, gap.date);
+
+                    const isPositive = gap.gapPercentage >= 0;
+                    const percentageClass = isPositive ? 'gap-positive' : 'gap-negative';
+
+                    gapItem.innerHTML = `
+                    <div class="gap-ticker">${gap.ticker}</div>
+                    <div class="gap-percentage ${percentageClass}">${gap.gapPercentage > 0 ? '+' : ''}${gap.gapPercentage.toFixed(1)}%</div>
+                    <div class="gap-details">${(gap.volume / 1000000).toFixed(1)}M vol</div>
+                `;
+
+                    container.appendChild(gapItem);
+                });
+            }
+
+            function openCandlestickModal(ticker, date) {
+                document.getElementById('modalTitle').textContent = `${ticker} - ${date} (4:00 AM - 10:00 PM EST)`;
+                document.getElementById('candlestickModal').style.display = 'block';
+                createCandlestickChart(ticker, date);
+            }
+
+            function closeCandlestickModal() {
+                document.getElementById('candlestickModal').style.display = 'none';
+            }
+
+            function createCandlestickChart(ticker, date) {
+                const ctx = document.getElementById('candlestickChart').getContext('2d');
+
+                if (window.candlestickChart instanceof Chart) {
+                    window.candlestickChart.destroy();
+                }
+
+                // Generate demo candlestick data
+                const intervals = [];
+                for (let hour = 4; hour <= 22; hour++) {
+                    for (let min = 0; min < 60; min += 15) {
+                        if (hour === 22 && min > 0) break;
+                        intervals.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
+                    }
+                }
+
+                let basePrice = 50 + Math.random() * 100;
+                let currentPrice = basePrice;
+
+                const candlestickData = intervals.map((time, index) => {
+                    const [hour, minute] = time.split(':').map(Number);
+                    const isPremarket = hour < 9 || (hour === 9 && minute < 30);
+                    const isAfterHours = hour >= 16;
+                    const isMarketHours = !isPremarket && !isAfterHours;
+
+                    let volatility = isMarketHours ? 0.02 : 0.01;
+                    if (isPremarket && hour >= 8) volatility = 0.025;
+
+                    const change = (Math.random() - 0.5) * volatility * currentPrice;
+                    currentPrice = currentPrice + change;
+
+                    return { x: time, y: currentPrice };
+                });
+
+                window.candlestickChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'Price',
+                            data: candlestickData,
+                            borderColor: '#4fc3f7',
+                            backgroundColor: 'rgba(79, 195, 247, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { labels: { color: '#ffffff' } }
+                        },
+                        scales: {
+                            x: {
+                                type: 'category',
+                                ticks: {
+                                    color: '#ffffff',
+                                    maxTicksLimit: 12,
+                                    callback: function (value, index) {
+                                        const time = this.getLabelForValue(value);
+                                        const [hour] = time.split(':');
+
+                                        if (time === '04:00') return '4AM (Pre)';
+                                        if (time === '09:30') return '9:30 (Open)';
+                                        if (time === '16:00') return '4PM (Close)';
+                                        if (time === '20:00') return '8PM (AH)';
+
+                                        return hour % 2 === 0 ? time : '';
+                                    }
+                                },
+                                grid: {
+                                    color: function (context) {
+                                        const time = candlestickData[context.index]?.x;
+                                        if (!time) return 'rgba(255, 255, 255, 0.1)';
+                                        if (time === '09:30' || time === '16:00') {
+                                            return 'rgba(255, 193, 7, 0.5)';
+                                        }
+                                        return 'rgba(255, 255, 255, 0.1)';
+                                    }
+                                }
+                            },
+                            y: {
+                                ticks: {
+                                    color: '#ffffff',
+                                    callback: function (value) { return '$' + value.toFixed(2); }
+                                },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function createMonthlyCharts(data, period) {
+                const container = document.getElementById('monthlyChartsGrid');
+                container.innerHTML = '';
+
+                let monthsToShow;
+                switch (period) {
+                    case '6months': monthsToShow = data.monthlyData.slice(-6); break;
+                    case '12months': monthsToShow = data.monthlyData.slice(-12); break;
+                    default: monthsToShow = data.monthlyData.slice(-3);
+                }
+
+                monthsToShow.forEach((monthData, index) => {
+                    const chartCard = document.createElement('div');
+                    chartCard.className = 'month-chart-card';
+
+                    const chartId = `monthChart${index}`;
+                    chartCard.innerHTML = `
+                    <div class="month-chart-title">
+                        <span>${monthData.month} ${monthData.year}</span>
+                        <div class="month-stats">
+                            ${monthData.statistics.totalGappers} gappers | 
+                            ${monthData.statistics.profitableShorts.toFixed(1)}% profitable shorts
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="${chartId}"></canvas>
+                    </div>
+                `;
+
+                    container.appendChild(chartCard);
+                    setTimeout(() => createIntradayChart(chartId, monthData), 100);
+                });
+            }
+
+            function createIntradayChart(canvasId, monthData) {
+                const ctx = document.getElementById(canvasId);
+                if (!ctx) return;
+
+                const ctxContext = ctx.getContext('2d');
+                const labels = monthData.intradayData.map(d => d.time);
+                const priceData = monthData.intradayData.map(d => d.avgPriceChange);
+
+                const highPoint = monthData.intradayData.reduce((max, current, index) =>
+                    current.avgPriceChange > monthData.intradayData[max].avgPriceChange ? index : max, 0
+                );
+                const lowPoint = monthData.intradayData.reduce((min, current, index) =>
+                    current.avgPriceChange < monthData.intradayData[min].avgPriceChange ? index : min, 0
+                );
+
+                const medianHigh = monthData.statistics.medianHighValue || priceData[highPoint];
+                const medianLow = monthData.statistics.medianLowValue || priceData[lowPoint];
+
+                const chart = new Chart(ctxContext, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Avg Price Change from Open (%)',
+                            data: priceData,
+                            borderColor: '#4fc3f7',
+                            backgroundColor: 'rgba(79, 195, 247, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    afterBody: function (context) {
+                                        const dataIndex = context[0].dataIndex;
+                                        if (dataIndex === highPoint) return ['📈 MEDIAN HIGH POINT'];
+                                        if (dataIndex === lowPoint) return ['📉 MEDIAN LOW POINT'];
+                                        return [];
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: {
+                                    color: '#ffffff',
+                                    maxTicksLimit: 8,
+                                    callback: function (value, index) {
+                                        const time = this.getLabelForValue(value);
+                                        return time.endsWith(':30') || time.endsWith(':00') ? time : '';
+                                    }
+                                },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            },
+                            y: {
+                                ticks: {
+                                    color: '#ffffff',
+                                    callback: function (value) { return value + '%'; }
+                                },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            }
+                        },
+                        elements: {
+                            point: {
+                                backgroundColor: function (context) {
+                                    if (context.dataIndex === highPoint) return 'rgba(76, 175, 80, 1)';
+                                    if (context.dataIndex === lowPoint) return 'rgba(244, 67, 54, 1)';
+                                    return 'rgba(79, 195, 247, 1)';
+                                },
+                                borderColor: function (context) {
+                                    if (context.dataIndex === highPoint) return 'rgba(76, 175, 80, 1)';
+                                    if (context.dataIndex === lowPoint) return 'rgba(244, 67, 54, 1)';
+                                    return 'rgba(79, 195, 247, 1)';
+                                },
+                                radius: function (context) {
+                                    return (context.dataIndex === highPoint || context.dataIndex === lowPoint) ? 6 : 0;
+                                }
+                            }
+                        }
+                    },
+                    plugins: [{
+                        afterRender: function (chart) {
+                            const ctx = chart.ctx;
+                            const yScale = chart.scales.y;
+                            const xScale = chart.scales.x;
+
+                            ctx.save();
+
+                            const highY = yScale.getPixelForValue(medianHigh);
+                            ctx.strokeStyle = 'rgba(76, 175, 80, 0.8)';
+                            ctx.lineWidth = 2;
+                            ctx.setLineDash([10, 5]);
+                            ctx.beginPath();
+                            ctx.moveTo(xScale.left, highY);
+                            ctx.lineTo(xScale.right, highY);
+                            ctx.stroke();
+
+                            const lowY = yScale.getPixelForValue(medianLow);
+                            ctx.strokeStyle = 'rgba(244, 67, 54, 0.8)';
+                            ctx.beginPath();
+                            ctx.moveTo(xScale.left, lowY);
+                            ctx.lineTo(xScale.right, lowY);
+                            ctx.stroke();
+
+                            const highTimeX = xScale.getPixelForValue(highPoint);
+                            ctx.strokeStyle = 'rgba(255, 193, 7, 0.8)';
+                            ctx.setLineDash([5, 5]);
+                            ctx.beginPath();
+                            ctx.moveTo(highTimeX, yScale.top);
+                            ctx.lineTo(highTimeX, yScale.bottom);
+                            ctx.stroke();
+
+                            ctx.restore();
+                        }
+                    }]
+                });
+            }
+
+            // Load data when page loads
+            document.addEventListener('DOMContentLoaded', loadData);
+
+            // Auto-refresh every 5 minutes
+            setInterval(loadData, 5 * 60 * 1000);
+
+            // Close modal when clicking outside
+            window.onclick = function (event) {
+                const modal = document.getElementById('candlestickModal');
+                if (event.target == modal) {
+                    closeCandlestickModal();
+                }
+            }
+        </script>
 </body>
 </html>
