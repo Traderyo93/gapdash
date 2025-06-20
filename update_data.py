@@ -250,8 +250,8 @@ class GapDataUpdater:
             traceback.print_exc()
             return []
     
-    def get_trading_days(self, days=30):
-        """Get recent trading days"""
+    def get_trading_days(self, days=250):
+        """Get recent trading days (default ~1 year)"""
         trading_days = []
         current_date = datetime.now(self.eastern)
         
@@ -313,8 +313,8 @@ class GapDataUpdater:
             return
         
         # Get recent trading days
-        trading_days = self.get_trading_days(30)
-        print(f"Processing {len(trading_days)} trading days...")
+        trading_days = self.get_trading_days(250)  # ~1 year of trading days
+        print(f"Processing {len(trading_days)} trading days (~1 year)...")
         
         all_gappers = []
         daily_counts = []
