@@ -35,7 +35,7 @@ jobs:
     
     - name: Check if data file was created
       run: |
-        if [ -f "data/gapper_stats.json" ]; then
+        if [ -f "data/gap_data_cache.json" ]; then
           echo "Data file created successfully"
           ls -la data/
         else
@@ -45,6 +45,10 @@ jobs:
     
     - name: Commit and push if changed
       run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add data/gap_data_cache.json
+        git diff --staged --quiet && echo "No changes to commit" || (git commit -m "Update gapper data $(date)" && git push)
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add data/gapper_stats.json
