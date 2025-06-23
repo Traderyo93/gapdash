@@ -1,11 +1,10 @@
-
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gapper Dashboard</title>
+    <title>Aequitas Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         * {
@@ -26,6 +25,38 @@
             padding: 20px;
             max-width: 1800px;
             margin: 0 auto;
+        }
+
+        /* Filter Bar */
+        .filter-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: #252836;
+            border-radius: 8px;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .filter-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(66, 153, 225, 0.2);
+            border-radius: 20px;
+            border: 1px solid #4299e1;
+        }
+
+        .filter-label {
+            color: #a0aec0;
+            font-weight: 500;
+        }
+
+        .filter-value {
+            color: #4299e1;
+            font-weight: 600;
         }
 
         .top-stats {
@@ -290,10 +321,23 @@
             cursor: pointer;
             transition: background 0.2s;
             z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .refresh-btn:hover {
             background: #3182ce;
+        }
+
+        .logout-section {
+            border-left: 1px solid rgba(255,255,255,0.3);
+            padding-left: 10px;
+            cursor: pointer;
+        }
+
+        .logout-section:hover {
+            color: #fed7d7;
         }
 
         @media (max-width: 1200px) {
@@ -328,9 +372,28 @@
 </head>
 
 <body>
-    <button class="refresh-btn" onclick="loadData()">🔄 Refresh</button>
+    <div class="refresh-btn" id="refreshBtn">
+        <span onclick="loadData()">🔄 Refresh</span>
+        <span class="logout-section" onclick="logout()">👤 <span id="usernameDisplay">User</span> | Logout</span>
+    </div>
 
     <div class="dashboard-container">
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <div class="filter-item">
+                <span class="filter-label">Gap value between</span>
+                <span class="filter-value">20% and 500%</span>
+            </div>
+            <div class="filter-item">
+                <span class="filter-label">Volume greater than</span>
+                <span class="filter-value">1.00 M</span>
+            </div>
+            <div class="filter-item">
+                <span class="filter-label">Price greater than</span>
+                <span class="filter-value">$1</span>
+            </div>
+        </div>
+
         <!-- Top Statistics Section -->
         <div class="top-stats">
             <!-- Gappers Section -->
@@ -408,7 +471,7 @@
                     </div>
                 </div>
 
-                <!-- Calendar View -->
+                <!-- Weekly Chart -->
                 <div class="chart-card">
                     <div class="chart-header">
                         <span>Average change from open</span>
@@ -455,7 +518,35 @@
     <div id="loadingIndicator" class="loading" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
         Loading dashboard data...
     </div>
+
     <script>
+        // ===== AUTHENTICATION SYSTEM =====
+        function checkAuthentication() {
+            const token = localStorage.getItem('authToken');
+            const username = localStorage.getItem('username');
+            
+            if (!token || !username) {
+                // No authentication found, redirect to login
+                window.location.href = '/login.html';
+                return false;
+            }
+            
+            return true;
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('username');
+            window.location.href = '/login.html';
+        }
+
+        // Check authentication immediately
+        if (!checkAuthentication()) {
+            // Will redirect to login, stop execution
+            throw new Error('Authentication required');
+        }
+
+        // ===== DASHBOARD CODE =====
         let dashboardData = null;
         let currentPeriod = 'M';
 
@@ -874,120 +965,122 @@
             // Add empty cells for days before the first day of the month
             for (let i = 0; i < firstDay; i++) {
                 const emptyDay = document.createElement('div');
-                emptyDay.className = 'calendar-day weekend';
-                calendar.appendChild(emptyDay);
-            }
+               emptyDay.className = 'calendar-day weekend';
+               calendar.appendChild(emptyDay);
+           }
 
-            // Add days of the month
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dayEl = document.createElement('div');
-                dayEl.className = 'calendar-day';
-                dayEl.textContent = day;
+           // Add days of the month
+           for (let day = 1; day <= daysInMonth; day++) {
+               const dayEl = document.createElement('div');
+               dayEl.className = 'calendar-day';
+               dayEl.textContent = day;
 
-                const dayOfWeek = new Date(year, month, day).getDay();
-                if (dayOfWeek === 0 || dayOfWeek === 6) {
-                    dayEl.classList.add('weekend');
-                } else {
-                    // Randomly assign gaps for demo
-                    if (Math.random() > 0.7) {
-                        dayEl.classList.add('has-gaps');
-                    } else {
-                        dayEl.classList.add('no-gaps');
-                    }
-                }
+               const dayOfWeek = new Date(year, month, day).getDay();
+               if (dayOfWeek === 0 || dayOfWeek === 6) {
+                   dayEl.classList.add('weekend');
+               } else {
+                   // Randomly assign gaps for demo
+                   if (Math.random() > 0.7) {
+                       dayEl.classList.add('has-gaps');
+                   } else {
+                       dayEl.classList.add('no-gaps');
+                   }
+               }
 
-                calendar.appendChild(dayEl);
-            }
-        }
+               calendar.appendChild(dayEl);
+           }
+       }
 
-        function updateLastGaps(lastGaps) {
-            const container = document.getElementById('gapsList');
-            container.innerHTML = '';
+       function updateLastGaps(lastGaps) {
+           const container = document.getElementById('gapsList');
+           container.innerHTML = '';
 
-            lastGaps.slice(0, 20).forEach(gap => {
-                const gapItem = document.createElement('div');
-                gapItem.className = 'gap-item';
+           lastGaps.slice(0, 20).forEach(gap => {
+               const gapItem = document.createElement('div');
+               gapItem.className = 'gap-item';
 
-                const isPositive = gap.gapPercentage >= 0;
-                const percentageClass = isPositive ? 'gap-positive' : 'gap-negative';
+               const isPositive = gap.gapPercentage >= 0;
+               const percentageClass = isPositive ? 'gap-positive' : 'gap-negative';
 
-                gapItem.innerHTML = `
-                    <div class="gap-ticker">${gap.ticker}</div>
-                    <div class="gap-percentage ${percentageClass}">${gap.gapPercentage > 0 ? '+' : ''}${gap.gapPercentage.toFixed(1)}%</div>
-                `;
+               gapItem.innerHTML = `
+                   <div class="gap-ticker">${gap.ticker}</div>
+                   <div class="gap-percentage ${percentageClass}">${gap.gapPercentage > 0 ? '+' : ''}${gap.gapPercentage.toFixed(1)}%</div>
+               `;
 
-                container.appendChild(gapItem);
-            });
-        }
+               container.appendChild(gapItem);
+           });
+       }
 
-        function generateDemoData() {
-            // Generate demo data
-            const monthlyStats = [];
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            
-            const now = new Date();
-            for (let i = 23; i >= 0; i--) {
-                const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                monthlyStats.push({
-                    month: monthNames[date.getMonth()],
-                    year: date.getFullYear(),
-                    gapperCount: Math.floor(Math.random() * 150) + 20,
-                    totalVolume: Math.floor(Math.random() * 70000000) + 10000000,
-                    totalDollarVolume: Math.floor(Math.random() * 400000000) + 50000000,
-                    avgOpenToClose: Math.random() * 10 - 5
-                });
-            }
+       function generateDemoData() {
+           // Generate demo data
+           const monthlyStats = [];
+           const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+           
+           const now = new Date();
+           for (let i = 23; i >= 0; i--) {
+               const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+               monthlyStats.push({
+                   month: monthNames[date.getMonth()],
+                   year: date.getFullYear(),
+                   gapperCount: Math.floor(Math.random() * 150) + 20,
+                   totalVolume: Math.floor(Math.random() * 70000000) + 10000000,
+                   totalDollarVolume: Math.floor(Math.random() * 400000000) + 50000000,
+                   avgOpenToClose: Math.random() * 10 - 5
+               });
+           }
 
-            const lastGaps = [];
-            const tickers = ['WHLR', 'DFLI', 'MITQ', 'AAPL', 'TSLA', 'NVDA', 'AMD', 'PLTR', 'COIN', 'RBLX'];
-            
-            for (let i = 0; i < 15; i++) {
-                lastGaps.push({
-                    ticker: tickers[i % tickers.length],
-                    gapPercentage: Math.random() * 200 - 50,
-                    volume: Math.floor(Math.random() * 50000000) + 1000000,
-                    date: now.toISOString().split('T')[0]
-                });
-            }
+           const lastGaps = [];
+           const tickers = ['WHLR', 'DFLI', 'MITQ', 'AAPL', 'TSLA', 'NVDA', 'AMD', 'PLTR', 'COIN', 'RBLX'];
+           
+           for (let i = 0; i < 15; i++) {
+               lastGaps.push({
+                   ticker: tickers[i % tickers.length],
+                   gapPercentage: Math.random() * 200 - 50,
+                   volume: Math.floor(Math.random() * 50000000) + 1000000,
+                   date: now.toISOString().split('T')[0]
+               });
+           }
 
-            return {
-                last_updated: new Date().toISOString(),
-                monthlyStats: monthlyStats,
-                lastGaps: lastGaps
-            };
-        }
+           return {
+               last_updated: new Date().toISOString(),
+               monthlyStats: monthlyStats,
+               lastGaps: lastGaps
+           };
+       }
 
-        // Event listeners for period buttons
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add event listeners to period buttons
-            document.querySelectorAll('.period-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const section = this.closest('.chart-card');
-                    section.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    const period = this.dataset.period;
-                    // Implement period change logic here
-                    console.log('Period changed to:', period);
-                });
-            });
+       // Event listeners for period buttons
+       document.addEventListener('DOMContentLoaded', function() {
+           // Set up authentication display
+           const username = localStorage.getItem('username') || 'User';
+           document.getElementById('usernameDisplay').textContent = username;
 
-            // Add event listeners to time filter buttons
-            document.querySelectorAll('.time-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const section = this.closest('.stat-section');
-                    section.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    const period = this.dataset.period;
-                    console.log('Time filter changed to:', period);
-                });
-            });
+           // Add event listeners to period buttons
+           document.querySelectorAll('.period-btn').forEach(btn => {
+               btn.addEventListener('click', function() {
+                   const section = this.closest('.chart-card');
+                   section.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                   this.classList.add('active');
+                   
+                   const period = this.dataset.period;
+                   console.log('Period changed to:', period);
+               });
+           });
 
-            // Load initial data
-            loadData();
-        });
-    </script>
+           // Add event listeners to time filter buttons
+           document.querySelectorAll('.time-btn').forEach(btn => {
+               btn.addEventListener('click', function() {
+                   const section = this.closest('.stat-section');
+                   section.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+                   this.classList.add('active');
+                   
+                   const period = this.dataset.period;
+                   console.log('Time filter changed to:', period);
+               });
+           });
+
+           // Load initial data
+           loadData();
+       });
+   </script>
 </body>
 </html>
-    
