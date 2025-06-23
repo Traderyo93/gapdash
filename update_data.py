@@ -629,6 +629,7 @@ class GapDataUpdater:
         }
         
         # Save to cache file
+        # Save to cache file
         with open(self.cache_file, 'w') as f:
             json.dump(cache_data, f, indent=2)
             
@@ -648,14 +649,17 @@ class GapDataUpdater:
         # Verify file was created
         if os.path.exists(self.cache_file):
             file_size = os.path.getsize(self.cache_file)
-           print(f"✓ Cache file created successfully: {file_size:,} bytes")
-       else:
-           print("❌ ERROR: Cache file was not created!")
+            print(f"✓ Cache file created successfully: {file_size:,} bytes")
+        else:
+            print("❌ ERROR: Cache file was not created!")
 
 def main():
-   """Main entry point"""
-   updater = GapDataUpdater()
-   updater.daily_update()
+    """Main entry point"""
+    updater = GapDataUpdater()
+    updater.daily_update()
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
    main()
