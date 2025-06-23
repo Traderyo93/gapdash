@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Gap Scanner Data Updater - Fetches real 5-minute intraday data
+Gap Scanner Data Updater - Fetches real 15-minute intraday data
 Updates gap scanner data from Polygon.io API with real candle data
 """
 
@@ -85,27 +85,27 @@ class GapDataUpdater:
             print(f"Error fetching intraday data for {ticker}: {e}")
             return None
 
-    def fetch_5min_intraday_data(self, ticker, date_str):
-        """Fetch 5-minute candle data for dashboard charts"""
+    def fetch_15min_intraday_data(self, ticker, date_str):
+        """Fetch 15-minute candle data for dashboard charts with high-of-day tracking"""
         try:
-            url = f"{self.polygon_base_url}/aggs/ticker/{ticker}/range/5/minute/{date_str}/{date_str}?adjusted=false&sort=asc&limit=50000&apiKey={self.api_key}"
+            url = f"{self.polygon_base_url}/aggs/ticker/{ticker}/range/15/minute/{date_str}/{date_str}?adjusted=false&sort=asc&limit=50000&apiKey={self.api_key}"
             response = requests.get(url)
             response.raise_for_status()
             data = response.json()
             
             if 'results' in data and data['results']:
-                # Convert to dashboard format with times
                 eastern = pytz.timezone('US/Eastern')
                 candles = []
+                high_of_day = {'price': 0, 'time': None, 'timestamp': None}
                 
                 for candle in data['results']:
                     timestamp = candle['t']
                     dt = datetime.fromtimestamp(timestamp/1000, tz=pytz.UTC).astimezone(eastern)
                     
-                    # Only include market hours (4 AM to 10 PM ET)
+                    # Only include extended hours (4 AM to 10 PM ET)
                     hour = dt.hour
                     if 4 <= hour <= 22:
-                        candles.append({
+                        candle_data = {
                             'time': dt.strftime('%H:%M'),
                             'timestamp': timestamp,
                             'open': float(candle['o']),
@@ -113,14 +113,25 @@ class GapDataUpdater:
                             'low': float(candle['l']),
                             'close': float(candle['c']),
                             'volume': int(candle['v'])
-                        })
+                        }
+                        
+                        # Track high of day
+                        if candle_data['high'] > high_of_day['price']:
+                            high_of_day['price'] = candle_data['high']
+                            high_of_day['time'] = candle_data['time']
+                            high_of_day['timestamp'] = timestamp
+                        
+                        candles.append(candle_data)
                 
-                return candles
+                return {
+                    'candles': candles,
+                    'highOfDay': high_of_day
+                }
             
             return None
                 
         except Exception as e:
-            print(f"Error fetching 5-min data for {ticker}: {e}")
+            print(f"Error fetching 15-min data for {ticker}: {e}")
             return None
     
     def fetch_candidates_for_date(self, date):
@@ -297,6 +308,75 @@ class GapDataUpdater:
         
         return list(reversed(trading_days))
     
+    def get_last_5_trading_days_gaps(self, all_gappers):
+        """Get gappers from last 5 trading days"""
+        if not all_gappers:
+            return []
+        
+        # Sort all gappers by date (newest first)
+        all_gappers_sorted = sorted(all_gappers, key=lambda x: x['date'], reverse=True)
+        
+        # Get unique dates and take last 5
+        unique_dates = []
+        seen_dates = set()
+        for gapper in all_gappers_sorted:
+            if gapper['date'] not in seen_dates:
+                unique_dates.append(gapper['date'])
+                seen_dates.add(gapper['date'])
+            if len(unique_dates) >= 5:
+                break
+        
+        last_5_dates = unique_dates[:5]
+        print(f"Last 5 trading days: {last_5_dates}")
+        
+        # Get all gappers from these 5 dates
+        last_5_days_gappers = [g for g in all_gappers_sorted if g['date'] in last_5_dates]
+        
+        return last_5_days_gappers[:50]  # Limit to 50 total gappers
+    
+    def calculate_current_month_stats(self, all_gappers):
+        """Calculate statistics for current month only"""
+        current_month = datetime.now(self.eastern).strftime('%Y-%m')
+        current_month_gappers = [g for g in all_gappers if g['date'].startswith(current_month)]
+        
+        print(f"Calculating stats for current month ({current_month}): {len(current_month_gappers)} gappers")
+        
+        if not current_month_gappers:
+            return {
+                'totalGappers': 0,
+                'avgOpenToClose': 0,
+                'profitableShorts': 0,
+                'medianHighTime': "10:30"
+            }
+        
+        # Real average open to close using actual OHLC data
+        open_to_close_changes = []
+        high_times = []
+        
+        for gapper in current_month_gappers:
+            if gapper.get('open') and gapper.get('close'):
+                otc_change = ((gapper['close'] - gapper['open']) / gapper['open']) * 100
+                open_to_close_changes.append(otc_change)
+            
+            # Collect typical high times (could be enhanced with real intraday data)
+            high_times.append("10:30")  # Default, could be calculated from 15-min data
+        
+        avg_open_to_close = sum(open_to_close_changes) / len(open_to_close_changes) if open_to_close_changes else 0
+        
+        # Real profitable shorts calculation
+        profitable_shorts = sum(1 for change in open_to_close_changes if change < 0)
+        profitable_short_percentage = (profitable_shorts / len(open_to_close_changes) * 100) if open_to_close_changes else 0
+        
+        # Calculate median high time
+        median_high_time = "10:30"  # Could be enhanced with real data
+        
+        return {
+            'totalGappers': len(current_month_gappers),
+            'avgOpenToClose': round(avg_open_to_close, 1),
+            'profitableShorts': round(profitable_short_percentage, 1),
+            'medianHighTime': median_high_time
+        }
+    
     def daily_update(self):
         """Main update function"""
         print(f"🚀 Starting Gap Scanner Update at {datetime.now()}")
@@ -348,23 +428,17 @@ class GapDataUpdater:
             'intradayData': {}
         }
         
-        # Get today's/latest gappers for the "Last Gaps" section
-        if all_gappers:
-            # Sort all gappers by date (newest first) and gap %
-            all_gappers.sort(key=lambda x: (x['date'], x['gap_percentage']), reverse=True)
-            
-            # Get the most recent gappers (from latest trading day with gappers)
-            latest_date = all_gappers[0]['date']
-            latest_gappers = [g for g in all_gappers if g['date'] == latest_date]
-            
-            cache_data['lastGaps'] = [{
-                'ticker': g['ticker'],
-                'gapPercentage': float(g['gap_percentage']),
-                'volume': int(g['volume']),
-                'date': g['date']
-            } for g in latest_gappers[:20]]  # Top 20 from latest day
-            
-            print(f"\n✓ Using {len(latest_gappers)} gappers from {latest_date} as 'Today's Gappers'")
+        # Get last 5 trading days of gappers for the "Last 5 Trading Days" section
+        last_5_days_gappers = self.get_last_5_trading_days_gaps(all_gappers)
+        
+        cache_data['lastGaps'] = [{
+            'ticker': g['ticker'],
+            'gapPercentage': float(g['gap_percentage']),
+            'volume': int(g['volume']),
+            'date': g['date']
+        } for g in last_5_days_gappers]
+        
+        print(f"\n✓ Using {len(last_5_days_gappers)} gappers from last 5 trading days")
         
         # Group gappers by date for the gappers section
         gappers_by_date = {}
@@ -376,55 +450,28 @@ class GapDataUpdater:
         
         cache_data['gappers'] = gappers_by_date
         
-        # Calculate REAL statistics from actual open/close data
-        if all_gappers:
-            # Real average open to close using actual OHLC data
-            open_to_close_changes = []
-            for gapper in all_gappers:
-                if gapper.get('open') and gapper.get('close'):
-                    otc_change = ((gapper['close'] - gapper['open']) / gapper['open']) * 100
-                    open_to_close_changes.append(otc_change)
-            
-            avg_open_to_close = sum(open_to_close_changes) / len(open_to_close_changes) if open_to_close_changes else 0
-            
-            # Real profitable shorts calculation
-            profitable_shorts = sum(1 for change in open_to_close_changes if change < 0)
-            profitable_short_percentage = (profitable_shorts / len(open_to_close_changes) * 100) if open_to_close_changes else 0
-            
-            cache_data['stats'] = {
-                'averageGapsPerDay': round(len(all_gappers) / len(trading_days), 2),
-                'totalGappers': len(all_gappers),
-                'avgOpenToClose': round(avg_open_to_close, 2),
-                'profitableShorts': round(profitable_short_percentage, 2),
-                'medianHighTime': "10:30",  # Could calculate from real data
-                'dailyCounts': daily_counts
-            }
-        else:
-            cache_data['stats'] = {
-                'averageGapsPerDay': 0,
-                'totalGappers': 0,
-                'avgOpenToClose': 0,
-                'profitableShorts': 0,
-                'medianHighTime': "10:30",
-                'dailyCounts': daily_counts
-            }
+        # Calculate CURRENT MONTH statistics only
+        current_month_stats = self.calculate_current_month_stats(all_gappers)
+        cache_data['stats'] = current_month_stats
         
-        # Fetch REAL 5-minute intraday data for top recent gappers
+        # Fetch REAL 15-minute intraday data for top recent gappers
         if cache_data['lastGaps']:
-            print(f"\nFetching REAL 5-minute intraday data for top gappers...")
+            print(f"\nFetching REAL 15-minute intraday data for top gappers...")
             for i, gapper in enumerate(cache_data['lastGaps'][:10]):  # Top 10 for intraday
                 ticker = gapper['ticker']
                 date = gapper['date']
-                print(f"Fetching 5-min data for {ticker} on {date}...")
+                print(f"Fetching 15-min data for {ticker} on {date}...")
                 
-                real_intraday = self.fetch_5min_intraday_data(ticker, date)
+                real_intraday = self.fetch_15min_intraday_data(ticker, date)
                 if real_intraday:
                     cache_data['intradayData'][ticker] = {
-                        'data': real_intraday,
+                        'data': real_intraday['candles'],
+                        'highOfDay': real_intraday['highOfDay'],
                         'date': date,
                         'gapPercentage': gapper['gapPercentage']
                     }
-                    print(f"  ✓ Got {len(real_intraday)} 5-min candles for {ticker}")
+                    print(f"  ✓ Got {len(real_intraday['candles'])} 15-min candles for {ticker}")
+                    print(f"  ✓ High of day: ${real_intraday['highOfDay']['price']:.2f} at {real_intraday['highOfDay']['time']}")
                 else:
                     print(f"  ❌ No intraday data for {ticker}")
                 
@@ -437,14 +484,15 @@ class GapDataUpdater:
         print(f"\n✅ UPDATE COMPLETE!")
         print(f"📁 Results saved to: {self.cache_file}")
         print(f"📊 Total gappers found: {len(all_gappers)}")
-        print(f"📈 Latest day gappers: {len(cache_data['lastGaps'])}")
+        print(f"📈 Last 5 days gappers: {len(cache_data['lastGaps'])}")
         print(f"🕯️ Intraday data for: {len(cache_data['intradayData'])} tickers")
         
-        if all_gappers:
-            avg_otc = cache_data['stats']['avgOpenToClose']
-            profitable_pct = cache_data['stats']['profitableShorts']
-            print(f"📉 Real Avg Open-to-Close: {avg_otc:.1f}%")
-            print(f"💰 Real Profitable Shorts: {profitable_pct:.1f}%")
+        if current_month_stats['totalGappers'] > 0:
+            print(f"📊 Current Month Stats:")
+            print(f"   Total Gappers: {current_month_stats['totalGappers']}")
+            print(f"   Avg Open-to-Close: {current_month_stats['avgOpenToClose']:.1f}%")
+            print(f"   Profitable Shorts: {current_month_stats['profitableShorts']:.1f}%")
+            print(f"   Median High Time: {current_month_stats['medianHighTime']}")
         
         # Verify file was created
         if os.path.exists(self.cache_file):
