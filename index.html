@@ -130,14 +130,15 @@
 
         .main-content {
             display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 20px;
+            grid-template-columns: 1fr 320px;
+            gap: 25px;
         }
 
         .charts-section {
             display: grid;
             grid-template-rows: auto 1fr;
-            gap: 20px;
+            gap: 25px;
+            min-height: 85vh;
         }
 
         /* Monthly Charts Section */
@@ -188,41 +189,46 @@
 
         .monthly-charts-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 15px;
-            max-height: 60vh;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 25px;
+            max-height: 80vh;
             overflow-y: auto;
         }
 
         .monthly-chart-item {
             background: #1a1d2e;
             border-radius: 8px;
-            padding: 15px;
+            padding: 25px;
             position: relative;
+            min-height: 320px;
         }
 
         .monthly-chart-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(139, 143, 163, 0.2);
         }
 
         .monthly-chart-title {
             color: #4299e1;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 16px;
         }
 
         .monthly-chart-stats {
             color: #8b8fa3;
-            font-size: 11px;
+            font-size: 13px;
             text-align: right;
+            line-height: 1.4;
         }
 
         .monthly-chart-container {
-            height: 120px;
+            height: 260px;
             position: relative;
+            margin-top: 15px;
         }
 
         .sidebar {
@@ -434,6 +440,13 @@
             position: relative;
         }
 
+        /* Responsive Design */
+        @media (max-width: 1600px) {
+            .monthly-charts-grid {
+                grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            }
+        }
+
         @media (max-width: 1200px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -444,7 +457,21 @@
             }
 
             .monthly-charts-grid {
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .monthly-charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .monthly-chart-item {
+                min-height: 280px;
+            }
+            
+            .monthly-chart-container {
+                height: 220px;
             }
         }
 
@@ -479,8 +506,8 @@
         <!-- Filter Bar -->
         <div class="filter-bar">
             <div class="filter-item">
-                <span class="filter-label">Gap value between</span>
-                <span class="filter-value">45% and 1000%</span>
+                <span class="filter-label">Gap value greater than</span>
+                <span class="filter-value">50%</span>
             </div>
             <div class="filter-item">
                 <span class="filter-label">Volume greater than</span>
@@ -547,7 +574,7 @@
         <div class="main-content">
             <!-- Charts Section -->
             <div class="charts-section">
-                <!-- Monthly Average Charts -->
+                <!-- Period Average Charts -->
                 <div class="monthly-charts-card">
                     <div class="monthly-charts-header">
                         <span>Average change from open</span>
@@ -559,7 +586,7 @@
                         </div>
                     </div>
                     <div class="monthly-charts-grid" id="monthlyChartsGrid">
-                        <!-- Monthly average charts will be populated here -->
+                        <!-- Period average charts will be populated here -->
                     </div>
                 </div>
             </div>
@@ -607,6 +634,7 @@
     <div id="loadingIndicator" class="loading" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
         Loading dashboard data...
     </div>
+
     <script>
         // ===== AUTHENTICATION SYSTEM =====
         function checkAuthentication() {
@@ -667,12 +695,17 @@
         function processGapDataCache(rawData) {
             console.log('Processing complete gap data cache...');
             console.log(`Found ${rawData.totalGappers} total gappers`);
-            console.log(`Found ${Object.keys(rawData.monthlyAverages || {}).length} monthly averages`);
+            console.log(`Monthly averages: ${Object.keys(rawData.monthlyAverages || {}).length}`);
+            console.log(`Weekly averages: ${Object.keys(rawData.weeklyAverages || {}).length}`);
+            console.log(`Daily averages: ${Object.keys(rawData.dailyAverages || {}).length}`);
 
             return {
                 monthlyAverages: rawData.monthlyAverages || {},
+                weeklyAverages: rawData.weeklyAverages || {},
+                dailyAverages: rawData.dailyAverages || {},
                 monthlyStats: rawData.monthlyStats || [],
                 weeklyStats: rawData.weeklyStats || [],
+                dailyStats: rawData.dailyStats || [],
                 calendarData: rawData.calendarData || {},
                 lastGaps: rawData.lastGaps || [],
                 summaryStats: rawData.summaryStats || {},
@@ -684,7 +717,7 @@
         function updateDashboard() {
             updateCurrentDate();
             createTopCharts();
-            createMonthlyAverageCharts();
+            createPeriodAverageCharts();
             createCalendar(dashboardData.calendarData);
             updateLastGaps(dashboardData.lastGaps);
         }
@@ -720,27 +753,24 @@
             } else if (period === 'W') {
                 const weeklyData = dashboardData.weeklyStats.slice(-12);
                 labels = weeklyData.map(w => w.week_key);
-                data = weeklyData.map(w => Math.abs(w.avg_open_to_close)); // Use absolute value as proxy
-            } else {
-                // Daily - use last 30 days of monthly data as approximation
-                const monthlyData = dashboardData.monthlyStats.slice(-6);
-                labels = monthlyData.map(m => `${m.month}-${m.year.toString().slice(-2)}`);
-                data = monthlyData.map(m => Math.floor(m.gapper_count / 30)); // Daily average
+                data = weeklyData.map(w => w.gapper_count);
+            } else { // Daily
+                const dailyData = dashboardData.dailyStats.slice(-12);
+                labels = dailyData.map(d => d.day_name);
+                data = dailyData.map(d => d.gapper_count);
             }
 
             chartInstances.gappersChart = new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [{
                         data: data,
-                        borderColor: '#fbbf24',
-                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHoverRadius: 4
+                        backgroundColor: '#fbbf24',
+                        borderColor: '#f59e0b',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        borderSkipped: false,
                     }]
                 },
                 options: {
@@ -761,7 +791,8 @@
                         y: {
                             display: true,
                             grid: { color: '#374151' },
-                            ticks: { color: '#8b8fa3' }
+                            ticks: { color: '#8b8fa3' },
+                            beginAtZero: true
                         }
                     }
                 }
@@ -785,26 +816,24 @@
             } else if (period === 'W') {
                 const weeklyData = dashboardData.weeklyStats.slice(-12);
                 labels = weeklyData.map(w => w.week_key);
-                data = weeklyData.map(() => Math.random() * 50 + 10); // Demo weekly volume
-            } else {
-                const monthlyData = dashboardData.monthlyStats.slice(-6);
-                labels = monthlyData.map(m => `${m.month}-${m.year.toString().slice(-2)}`);
-                data = monthlyData.map(m => m.total_volume / 1000000 / 30); // Daily average
+                data = weeklyData.map(w => w.total_volume / 1000000);
+            } else { // Daily
+                const dailyData = dashboardData.dailyStats.slice(-12);
+                labels = dailyData.map(d => d.day_name);
+                data = dailyData.map(d => d.total_volume / 1000000);
             }
 
             chartInstances.volumeChart = new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [{
                         data: data,
-                        borderColor: '#fbbf24',
-                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHoverRadius: 4
+                        backgroundColor: '#fbbf24',
+                        borderColor: '#f59e0b',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        borderSkipped: false,
                     }]
                 },
                 options: {
@@ -828,9 +857,10 @@
                             ticks: { 
                                 color: '#8b8fa3',
                                 callback: function(value) {
-                                    return value.toFixed(1) + 'M';
+                                    return value.toFixed(0) + 'M';
                                 }
-                            }
+                            },
+                            beginAtZero: true
                         }
                     }
                 }
@@ -854,26 +884,24 @@
             } else if (period === 'W') {
                 const weeklyData = dashboardData.weeklyStats.slice(-12);
                 labels = weeklyData.map(w => w.week_key);
-                data = weeklyData.map(() => Math.random() * 200 + 50); // Demo weekly dollar volume
-            } else {
-                const monthlyData = dashboardData.monthlyStats.slice(-6);
-                labels = monthlyData.map(m => `${m.month}-${m.year.toString().slice(-2)}`);
-                data = monthlyData.map(m => m.total_dollar_volume / 1000000 / 30); // Daily average
+                data = weeklyData.map(w => w.total_dollar_volume / 1000000);
+            } else { // Daily
+                const dailyData = dashboardData.dailyStats.slice(-12);
+                labels = dailyData.map(d => d.day_name);
+                data = dailyData.map(d => d.total_dollar_volume / 1000000);
             }
 
             chartInstances.dollarVolumeChart = new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [{
                         data: data,
-                        borderColor: '#fbbf24',
-                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHoverRadius: 4
+                        backgroundColor: '#fbbf24',
+                        borderColor: '#f59e0b',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        borderSkipped: false,
                     }]
                 },
                 options: {
@@ -897,533 +925,652 @@
                             ticks: { 
                                 color: '#8b8fa3',
                                 callback: function(value) {
-                                    return '$' + value.toFixed(1) + 'M';
+                                    return '$' + value.toFixed(0) + 'M';
                                 }
-                            }
+                            },
+                            beginAtZero: true
                         }
                     }
                 }
             });
         }
 
-        function createMonthlyAverageCharts() {
+        function createPeriodAverageCharts() {
             const chartsGrid = document.getElementById('monthlyChartsGrid');
             chartsGrid.innerHTML = '';
             
-            // Clear existing monthly chart instances
+            // Clear existing chart instances
             Object.keys(chartInstances).forEach(key => {
-                if (key.startsWith('monthly_') && chartInstances[key] && typeof chartInstances[key].destroy === 'function') {
+                if (key.startsWith('period_') && chartInstances[key] && typeof chartInstances[key].destroy === 'function') {
                     chartInstances[key].destroy();
                     delete chartInstances[key];
                 }
             });
 
-            const monthlyAverages = dashboardData.monthlyAverages;
+            let periodData = {};
+            let title = '';
             
-            // Sort months by date (most recent first)
-            const sortedMonths = Object.keys(monthlyAverages).sort((a, b) => b.localeCompare(a));
-            
-            // Show last 12 months
-            sortedMonths.slice(0, 12).forEach(monthKey => {
-                const monthData = monthlyAverages[monthKey];
-                createMonthlyChart(monthData, monthKey);
-            });
-
-            if (sortedMonths.length === 0) {
-                chartsGrid.innerHTML = '<div style="text-align: center; color: #8b8fa3; padding: 40px;">No monthly average data available</div>';
-            }
-        }
-
-        function createMonthlyChart(monthData, monthKey) {
-            const chartsGrid = document.getElementById('monthlyChartsGrid');
-            
-            // Create chart container
-            const chartItem = document.createElement('div');
-            chartItem.className = 'monthly-chart-item';
-            
-            const chartId = `monthly_${monthKey.replace('-', '_')}`;
-            
-            chartItem.innerHTML = `
-                <div class="monthly-chart-header">
-                    <div class="monthly-chart-title">${monthData.month} ${monthData.year}</div>
-                    <div class="monthly-chart-stats">
-                        <div>${monthData.gapper_count} gappers</div>
-                        <div>${monthData.avg_open_to_close > 0 ? '+' : ''}${monthData.avg_open_to_close}% avg</div>
-                    </div>
-                </div>
-                <div class="monthly-chart-container">
-                    <canvas id="${chartId}"></canvas>
-                </div>
-            `;
-            
-            chartsGrid.appendChild(chartItem);
-            
-            // Create the actual chart
-            setTimeout(() => {
-                createMonthlyAverageChart(chartId, monthData);
-            }, 10);
-        }
-
-        function createMonthlyAverageChart(chartId, monthData) {
-            const ctx = document.getElementById(chartId);
-            if (!ctx) return;
-            
-            const ctxContext = ctx.getContext('2d');
-            
-            const labels = monthData.time_labels || [];
-            const avgPrices = monthData.avg_prices || [];
-            const avgHighs = monthData.avg_highs || [];
-            const avgLows = monthData.avg_lows || [];
-            const openLine = monthData.open_line || [];
-
-            const chart = new Chart(ctxContext, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'High',
-                            data: avgHighs,
-                            borderColor: '#48bb78',
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
-                            pointRadius: 0,
-                            tension: 0.2
-                        },
-                        {
-                            label: 'Price',
-                            data: avgPrices,
-                            borderColor: '#4299e1',
-                            backgroundColor: 'rgba(66, 153, 225, 0.1)',
-                            borderWidth: 2,
-                            fill: false,
-                            pointRadius: 0,
-                            pointHoverRadius: 3,
-                            tension: 0.3
-                        },
-                        {
-                            label: 'Open',
-                            data: openLine,
-                            borderColor: '#fbbf24',
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            borderDash: [3, 3],
-                            pointRadius: 0,
-                            tension: 0
-                        },
-                        {
-                            label: 'Low',
-                            data: avgLows,
-                            borderColor: '#f56565',
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
-                            pointRadius: 0,
-                            tension: 0.2
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            enabled: true,
-                            backgroundColor: 'rgba(37, 40, 54, 0.95)',
-                            titleColor: '#ffffff',
-                            bodyColor: '#8b8fa3',
-                            borderColor: '#4299e1',
-                            borderWidth: 1,
-                            displayColors: true,
-                            callbacks: {
-                                title: function(context) {
-                                    return `${monthData.month} ${monthData.year} - ${context[0].label}`;
-                                },
-                                label: function(context) {
-                                    return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                color: '#8b8fa3',
-                                maxTicksLimit: 4,
-                                font: {
-                                    size: 10
-                                }
-                            }
-                        },
-                        y: {
-                            display: true,
-                            grid: {
-                                color: 'rgba(139, 143, 163, 0.1)'
-                            },
-                            ticks: {
-                                color: '#8b8fa3',
-                                maxTicksLimit: 4,
-                                font: {
-                                    size: 10
-                                },
-                                callback: function(value) {
-                                    return value.toFixed(0) + '%';
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            
-            // Store chart instance for cleanup
-            chartInstances[chartId] = chart;
-        }
-
-        function createCalendar(calendarData) {
-            const calendar = document.getElementById('calendarGrid');
-            calendar.innerHTML = '';
-
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth();
-            
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const firstDay = new Date(year, month, 1).getDay();
-
-            // Get gap dates from real data
-            const gapDates = new Set(calendarData?.gap_dates || []);
-
-            // Add empty cells for days before the first day of the month
-            for (let i = 0; i < firstDay; i++) {
-                const emptyDay = document.createElement('div');
-                emptyDay.className = 'calendar-day weekend';
-                calendar.appendChild(emptyDay);
-            }
-
-            // Add days of the month
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dayEl = document.createElement('div');
-                dayEl.className = 'calendar-day';
-                dayEl.textContent = day;
-
-                const dayOfWeek = new Date(year, month, day).getDay();
-                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-                if (dayOfWeek === 0 || dayOfWeek === 6) {
-                    dayEl.classList.add('weekend');
-                } else {
-                    if (gapDates.has(dateString)) {
-                        dayEl.classList.add('has-gaps');
-                    } else {
-                        dayEl.classList.add('no-gaps');
-                    }
-                }
-
-                calendar.appendChild(dayEl);
-            }
-        }
-
-        function updateLastGaps(lastGaps) {
-            const container = document.getElementById('gapsList');
-            container.innerHTML = '';
-
-            lastGaps.slice(0, 25).forEach(gap => {
-                const gapItem = document.createElement('div');
-                gapItem.className = 'gap-item';
-                gapItem.onclick = () => showIndividualChart(gap);
-
-                const isPositive = gap.gapPercentage >= 0;
-                const percentageClass = isPositive ? 'gap-positive' : 'gap-negative';
-                const otcClass = gap.openToCloseChange >= 0 ? 'gap-positive' : 'gap-negative';
-
-                gapItem.innerHTML = `
-                    <div>
-                        <div class="gap-ticker">${gap.ticker}</div>
-                        <div style="font-size: 11px; color: #8b8fa3;">${formatDate(gap.date)}</div>
-                    </div>
-                    <div>
-                        <div class="gap-percentage ${percentageClass}">${gap.gapPercentage > 0 ? '+' : ''}${gap.gapPercentage.toFixed(1)}%</div>
-                        <div class="${otcClass}" style="font-size: 11px; text-align: right;">
-                            ${gap.openToCloseChange > 0 ? '+' : ''}${gap.openToCloseChange.toFixed(1)}%
-                        </div>
-                    </div>
-                `;
-
-                container.appendChild(gapItem);
-            });
-        }
-
-        function showIndividualChart(gapData) {
-            const modal = document.getElementById('chartModal');
-            const modalTitle = document.getElementById('modalChartTitle');
-            
-            modalTitle.textContent = `${gapData.ticker} - ${formatDate(gapData.date)} - ${gapData.gapPercentage > 0 ? '+' : ''}${gapData.gapPercentage.toFixed(1)}%`;
-            
-            modal.style.display = 'flex';
-            
-            // Clear existing individual chart
-            if (chartInstances.individualChart && typeof chartInstances.individualChart.destroy === 'function') {
-                chartInstances.individualChart.destroy();
+            if (currentBottomPeriod === 'M') {
+                periodData = dashboardData.monthlyAverages;
+                title = 'Monthly';
+            } else if (currentBottomPeriod === 'W') {
+                periodData = dashboardData.weeklyAverages;
+                title = 'Weekly';
+            } else { // Daily
+                periodData = dashboardData.dailyAverages;
+                title = 'Daily';
             }
             
-            // Create individual chart
-            setTimeout(() => {
-                createIndividualChart(gapData);
-            }, 100);
-        }
+            // Sort periods by date (most recent first)
+            const sortedPeriods = Object.keys(periodData).sort((a, b) => b.localeCompare(a));
+           const periodsToShow = currentBottomPeriod === 'D' ? 12 : (currentBottomPeriod === 'W' ? 12 : 12);
+           
+           // Create charts for each period
+           sortedPeriods.slice(0, periodsToShow).forEach(periodKey => {
+               const periodChartData = periodData[periodKey];
+               createPeriodChart(periodChartData, periodKey, title);
+           });
 
-        function createIndividualChart(gapData) {
-            const ctx = document.getElementById('individualChart').getContext('2d');
-            
-            const individualData = gapData.individualData;
-            if (!individualData) {
-                console.error('No individual chart data available');
-                return;
-            }
+           if (sortedPeriods.length === 0) {
+               chartsGrid.innerHTML = `<div style="text-align: center; color: #8b8fa3; padding: 40px;">No ${title.toLowerCase()} average data available</div>`;
+           }
+       }
 
-            const labels = individualData.time_labels || [];
-            const prices = individualData.price_values || [];
-            
-            // Create reference lines
-            const openLine = new Array(labels.length).fill(individualData.open);
-            const highLine = new Array(labels.length).fill(individualData.high);
-            const lowLine = new Array(labels.length).fill(individualData.low);
+       function createPeriodChart(periodData, periodKey, title) {
+           const chartsGrid = document.getElementById('monthlyChartsGrid');
+           
+           // Create chart container
+           const chartItem = document.createElement('div');
+           chartItem.className = 'monthly-chart-item';
+           
+           const chartId = `period_${periodKey.replace(/[-:]/g, '_')}`;
+           
+           let displayTitle = '';
+           if (currentBottomPeriod === 'M') {
+               displayTitle = `${periodData.month} ${periodData.year}`;
+           } else if (currentBottomPeriod === 'W') {
+               displayTitle = `Week ${periodData.week}, ${periodData.year}`;
+           } else {
+               displayTitle = periodData.day_name;
+           }
+           
+           chartItem.innerHTML = `
+               <div class="monthly-chart-header">
+                   <div class="monthly-chart-title">${displayTitle}</div>
+                   <div class="monthly-chart-stats">
+                       <div>${periodData.gapper_count} gappers</div>
+                       <div>${periodData.avg_open_to_close > 0 ? '+' : ''}${periodData.avg_open_to_close}% avg</div>
+                   </div>
+               </div>
+               <div class="monthly-chart-container">
+                   <canvas id="${chartId}"></canvas>
+               </div>
+           `;
+           
+           chartsGrid.appendChild(chartItem);
+           
+           // Create the actual chart
+           setTimeout(() => {
+               createPeriodAverageChart(chartId, periodData);
+           }, 10);
+       }
 
-            chartInstances.individualChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'High',
-                            data: highLine,
-                            borderColor: '#48bb78',
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
-                            pointRadius: 0,
-                            tension: 0
-                        },
-                        {
-                            label: 'Price',
-                            data: prices,
-                            borderColor: '#4299e1',
-                            backgroundColor: 'rgba(66, 153, 225, 0.1)',
-                            borderWidth: 3,
-                            fill: false,
-                            pointRadius: 1,
-                            pointHoverRadius: 4,
-                            tension: 0.2
-                        },
-                        {
-                            label: 'Open',
-                            data: openLine,
-                            borderColor: '#fbbf24',
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            borderDash: [3, 3],
-                            pointRadius: 0,
-                            tension: 0
-                        },
-                        {
-                            label: 'Low',
-                            data: lowLine,
-                            borderColor: '#f56565',
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
-                            pointRadius: 0,
-                            tension: 0
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
-                    },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            labels: {
-                                color: '#8b8fa3',
-                                usePointStyle: true
-                            }
-                        },
-                        tooltip: {
-                            enabled: true,
-                            backgroundColor: 'rgba(37, 40, 54, 0.95)',
-                            titleColor: '#ffffff',
-                            bodyColor: '#8b8fa3',
-                            borderColor: '#4299e1',
-                            borderWidth: 1,
-                            callbacks: {
-                                title: function(context) {
-                                    return `${gapData.ticker} - ${context[0].label}`;
-                                },
-                                label: function(context) {
-                                    return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            grid: {
-                                color: 'rgba(139, 143, 163, 0.1)'
-                            },
-                            ticks: {
-                                color: '#8b8fa3',
-                                maxTicksLimit: 8
-                            }
-                        },
-                        y: {
-                            display: true,
-                            grid: {
-                                color: 'rgba(139, 143, 163, 0.1)'
-                            },
-                            ticks: {
-                                color: '#8b8fa3',
-                                callback: function(value) {
-                                    return '$' + value.toFixed(2);
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
+       function createPeriodAverageChart(chartId, periodData) {
+           const ctx = document.getElementById(chartId);
+           if (!ctx) return;
+           
+           const ctxContext = ctx.getContext('2d');
+           
+           const labels = periodData.time_labels || [];
+           const avgPrices = periodData.avg_prices || [];
+           
+           // Use static HOD and LOD from the data (horizontal lines)
+           const avgHighOfDay = periodData.avg_high_of_day || 10;
+           const avgLowOfDay = periodData.avg_low_of_day || -10;
+           
+           // Create static horizontal lines
+           const hodLine = new Array(labels.length).fill(avgHighOfDay);
+           const lodLine = new Array(labels.length).fill(avgLowOfDay);
+           const openLine = new Array(labels.length).fill(0); // Reference at 0%
 
-        function closeIndividualChart() {
-            const modal = document.getElementById('chartModal');
-            modal.style.display = 'none';
-            
-            if (chartInstances.individualChart && typeof chartInstances.individualChart.destroy === 'function') {
-                chartInstances.individualChart.destroy();
-            }
-        }
+           const chart = new Chart(ctxContext, {
+               type: 'line',
+               data: {
+                   labels: labels,
+                   datasets: [
+                       {
+                           label: 'High',
+                           data: hodLine,
+                           borderColor: '#48bb78',
+                           backgroundColor: 'transparent',
+                           borderWidth: 3,
+                           borderDash: [8, 4],
+                           pointRadius: 0,
+                           tension: 0
+                       },
+                       {
+                           label: 'Price',
+                           data: avgPrices,
+                           borderColor: '#4299e1',
+                           backgroundColor: 'rgba(66, 153, 225, 0.1)',
+                           borderWidth: 3,
+                           fill: false,
+                           pointRadius: 0,
+                           pointHoverRadius: 4,
+                           tension: 0.3
+                       },
+                       {
+                           label: 'Open',
+                           data: openLine,
+                           borderColor: '#fbbf24',
+                           backgroundColor: 'transparent',
+                           borderWidth: 3,
+                           borderDash: [6, 3],
+                           pointRadius: 0,
+                           tension: 0
+                       },
+                       {
+                           label: 'Low',
+                           data: lodLine,
+                           borderColor: '#f56565',
+                           backgroundColor: 'transparent',
+                           borderWidth: 3,
+                           borderDash: [8, 4],
+                           pointRadius: 0,
+                           tension: 0
+                       }
+                   ]
+               },
+               options: {
+                   responsive: true,
+                   maintainAspectRatio: false,
+                   interaction: {
+                       intersect: false,
+                       mode: 'index'
+                   },
+                   plugins: {
+                       legend: {
+                           display: false
+                       },
+                       tooltip: {
+                           enabled: true,
+                           backgroundColor: 'rgba(37, 40, 54, 0.95)',
+                           titleColor: '#ffffff',
+                           bodyColor: '#8b8fa3',
+                           borderColor: '#4299e1',
+                           borderWidth: 1,
+                           displayColors: true,
+                           titleFont: { size: 14 },
+                           bodyFont: { size: 13 },
+                           callbacks: {
+                               title: function(context) {
+                                   return `${periodData.period_name} - ${context[0].label}`;
+                               },
+                               label: function(context) {
+                                   return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`;
+                               }
+                           }
+                       }
+                   },
+                   scales: {
+                       x: {
+                           display: true,
+                           grid: {
+                               display: true,
+                               color: 'rgba(139, 143, 163, 0.1)'
+                           },
+                           ticks: {
+                               color: '#8b8fa3',
+                               maxTicksLimit: 6,
+                               font: {
+                                   size: 12
+                               }
+                           }
+                       },
+                       y: {
+                           display: true,
+                           grid: {
+                               color: 'rgba(139, 143, 163, 0.15)'
+                           },
+                           ticks: {
+                               color: '#8b8fa3',
+                               maxTicksLimit: 6,
+                               font: {
+                                   size: 12
+                               },
+                               callback: function(value) {
+                                   return value.toFixed(0) + '%';
+                               }
+                           }
+                       }
+                   }
+               }
+           });
+           
+           chartInstances[chartId] = chart;
+       }
 
-        function formatDate(dateStr) {
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        }
+       function createCalendar(calendarData) {
+           const calendar = document.getElementById('calendarGrid');
+           calendar.innerHTML = '';
 
-        function generateDemoData() {
-            // Generate demo data matching the expected structure
-            const monthlyAverages = {};
-            const monthlyStats = [];
-            const weeklyStats = [];
-            const lastGaps = [];
-            
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            const now = new Date();
-            
-            // Generate last 12 months of data
-            for (let i = 11; i >= 0; i--) {
-                const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                const monthName = monthNames[date.getMonth()];
-                
-                // Generate time series for average chart
-                const timeLabels = [];
-                const avgPrices = [];
-                const avgHighs = [];
-                const avgLows = [];
-                const openLine = [];
-                
-                for (let j = 0; j < 26; j++) {
-                    const hour = 9 + Math.floor(j * 0.25);
-                    const minute = 30 + ((j * 15) % 60);
-                    timeLabels.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
-                    
-                    const progress = j / 25;
-                    const baseChange = (Math.random() - 0.5) * 20; // -10% to +10%
-                    const volatility = Math.sin(progress * Math.PI) * 5; // Peak volatility mid-day
-                    
-                    avgPrices.push(baseChange + (Math.random() - 0.5) * volatility);
-                    avgHighs.push(baseChange + Math.abs(volatility) + Math.random() * 5);
-                    avgLows.push(baseChange - Math.abs(volatility) - Math.random() * 5);
-                    openLine.push(0);
-                }
-                
-                const gapperCount = Math.floor(Math.random() * 50) + 20;
-                const avgOTC = (Math.random() - 0.5) * 20;
-                
-                monthlyAverages[monthKey] = {
-                    month: monthName,
-                    year: date.getFullYear(),
-                    month_key: monthKey,
-                    gapper_count: gapperCount,
-                    avg_gap_percentage: Math.random() * 100 + 50,
-                    avg_open_to_close: avgOTC,
-                    total_volume: Math.floor(Math.random() * 100000000) + 50000000,
-                    total_dollar_volume: Math.floor(Math.random() * 500000000) + 100000000,
-                    time_labels: timeLabels,
-                    avg_prices: avgPrices,
-                    avg_highs: avgHighs,
-                    avg_lows: avgLows,
-                    open_line: openLine
-                };
-                
-                monthlyStats.push({
-                    month: monthName,
-                    year: date.getFullYear(),
-                    month_key: monthKey,
-                    gapper_count: gapperCount,
-                    total_volume: monthlyAverages[monthKey].total_volume,
-                    total_dollar_volume: monthlyAverages[monthKey].total_dollar_volume,
-                    avg_open_to_close: avgOTC
-                });
-            }
-            
-            // Generate weekly stats
-            for (let i = 11; i >= 0; i--) {
-                const date = new Date(now);
-                date.setDate(date.getDate() - (i * 7));
-                const year = date.getFullYear();
-                const week = Math.floor((date - new Date(year, 0, 1)) / (7 * 24 * 60 * 60 * 1000)) + 1;
-                
-                weeklyStats.push({
-                    week_key: `${year}-W${week.toString().padStart(2, '0')}`,
-                    avg_open_to_close: (Math.random() - 0.5) * 20
-                });
-            }
-            
-            // Generate last gaps
-            const tickers = ['WHLR', 'DFLI', 'MITQ', 'AAPL', 'TSLA', 'NVDA', 'AMD', 'PLTR', 'COIN', 'RBLX'];
-            for (let i = 0; i < 20; i++) {
-                const date = new Date(now);
-                date.setDate(date.getDate() - i);
-                const dateStr = date.toISOString().split('T')[0];
-                
-                const ticker = tickers[i % tickers.length];
-                const gap = Math.random() * 200 + 45;
-                const otc = (Math.random() - 0.5) * 30;
-                
-                lastGaps.push({
-                    ticker: ticker,
-                    gapPercentage: gap,
-                    volume: Math.floor(Math.random() * 50000000) + 1000000,
+           const now = new Date();
+           const year = now.getFullYear();
+           const month = now.getMonth();
+           
+           const daysInMonth = new Date(year, month + 1, 0).getDate();
+           const firstDay = new Date(year, month, 1).getDay();
+
+           // Get gap dates from real data
+           const gapDates = new Set(calendarData?.gap_dates || []);
+
+           // Add empty cells for days before the first day of the month
+           for (let i = 0; i < firstDay; i++) {
+               const emptyDay = document.createElement('div');
+               emptyDay.className = 'calendar-day weekend';
+               calendar.appendChild(emptyDay);
+           }
+
+           // Add days of the month
+           for (let day = 1; day <= daysInMonth; day++) {
+               const dayEl = document.createElement('div');
+               dayEl.className = 'calendar-day';
+               dayEl.textContent = day;
+
+               const dayOfWeek = new Date(year, month, day).getDay();
+               const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+               if (dayOfWeek === 0 || dayOfWeek === 6) {
+                   dayEl.classList.add('weekend');
+               } else {
+                   if (gapDates.has(dateString)) {
+                       dayEl.classList.add('has-gaps');
+                   } else {
+                       dayEl.classList.add('no-gaps');
+                   }
+               }
+
+               calendar.appendChild(dayEl);
+           }
+       }
+
+       function updateLastGaps(lastGaps) {
+           const container = document.getElementById('gapsList');
+           container.innerHTML = '';
+
+           lastGaps.slice(0, 25).forEach(gap => {
+               const gapItem = document.createElement('div');
+               gapItem.className = 'gap-item';
+               gapItem.onclick = () => showIndividualChart(gap);
+
+               const isPositive = gap.gapPercentage >= 0;
+               const percentageClass = isPositive ? 'gap-positive' : 'gap-negative';
+               const otcClass = gap.openToCloseChange >= 0 ? 'gap-positive' : 'gap-negative';
+
+               gapItem.innerHTML = `
+                   <div>
+                       <div class="gap-ticker">${gap.ticker}</div>
+                       <div style="font-size: 11px; color: #8b8fa3;">${formatDate(gap.date)}</div>
+                   </div>
+                   <div>
+                       <div class="gap-percentage ${percentageClass}">${gap.gapPercentage > 0 ? '+' : ''}${gap.gapPercentage.toFixed(1)}%</div>
+                       <div class="${otcClass}" style="font-size: 11px; text-align: right;">
+                           ${gap.openToCloseChange > 0 ? '+' : ''}${gap.openToCloseChange.toFixed(1)}%
+                       </div>
+                   </div>
+               `;
+
+               container.appendChild(gapItem);
+           });
+       }
+
+       function showIndividualChart(gapData) {
+           const modal = document.getElementById('chartModal');
+           const modalTitle = document.getElementById('modalChartTitle');
+           
+           modalTitle.textContent = `${gapData.ticker} - ${formatDate(gapData.date)} - ${gapData.gapPercentage > 0 ? '+' : ''}${gapData.gapPercentage.toFixed(1)}%`;
+           
+           modal.style.display = 'flex';
+           
+           // Clear existing individual chart
+           if (chartInstances.individualChart && typeof chartInstances.individualChart.destroy === 'function') {
+               chartInstances.individualChart.destroy();
+           }
+           
+           // Create individual chart
+           setTimeout(() => {
+               createIndividualChart(gapData);
+           }, 100);
+       }
+
+       function createIndividualChart(gapData) {
+           const ctx = document.getElementById('individualChart').getContext('2d');
+           
+           const individualData = gapData.individualData;
+           if (!individualData) {
+               console.error('No individual chart data available');
+               return;
+           }
+
+           const labels = individualData.time_labels || [];
+           const prices = individualData.price_values || [];
+           
+           // Create reference lines
+           const openLine = new Array(labels.length).fill(individualData.open);
+           const highLine = new Array(labels.length).fill(individualData.high);
+           const lowLine = new Array(labels.length).fill(individualData.low);
+
+           chartInstances.individualChart = new Chart(ctx, {
+               type: 'line',
+               data: {
+                   labels: labels,
+                   datasets: [
+                       {
+                           label: 'High',
+                           data: highLine,
+                           borderColor: '#48bb78',
+                           backgroundColor: 'transparent',
+                           borderWidth: 2,
+                           borderDash: [5, 5],
+                           pointRadius: 0,
+                           tension: 0
+                       },
+                       {
+                           label: 'Price',
+                           data: prices,
+                           borderColor: '#4299e1',
+                           backgroundColor: 'rgba(66, 153, 225, 0.1)',
+                           borderWidth: 3,
+                           fill: false,
+                           pointRadius: 1,
+                           pointHoverRadius: 4,
+                           tension: 0.2
+                       },
+                       {
+                           label: 'Open',
+                           data: openLine,
+                           borderColor: '#fbbf24',
+                           backgroundColor: 'transparent',
+                           borderWidth: 2,
+                           borderDash: [3, 3],
+                           pointRadius: 0,
+                           tension: 0
+                       },
+                       {
+                           label: 'Low',
+                           data: lowLine,
+                           borderColor: '#f56565',
+                           backgroundColor: 'transparent',
+                           borderWidth: 2,
+                           borderDash: [5, 5],
+                           pointRadius: 0,
+                           tension: 0
+                       }
+                   ]
+               },
+               options: {
+                   responsive: true,
+                   maintainAspectRatio: false,
+                   interaction: {
+                       intersect: false,
+                       mode: 'index'
+                   },
+                   plugins: {
+                       legend: {
+                           display: true,
+                           labels: {
+                               color: '#8b8fa3',
+                               usePointStyle: true
+                           }
+                       },
+                       tooltip: {
+                           enabled: true,
+                           backgroundColor: 'rgba(37, 40, 54, 0.95)',
+                           titleColor: '#ffffff',
+                           bodyColor: '#8b8fa3',
+                           borderColor: '#4299e1',
+                           borderWidth: 1,
+                           callbacks: {
+                               title: function(context) {
+                                   return `${gapData.ticker} - ${context[0].label}`;
+                               },
+                               label: function(context) {
+                                   return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
+                               }
+                           }
+                       }
+                   },
+                   scales: {
+                       x: {
+                           display: true,
+                           grid: {
+                               color: 'rgba(139, 143, 163, 0.1)'
+                           },
+                           ticks: {
+                               color: '#8b8fa3',
+                               maxTicksLimit: 8
+                           }
+                       },
+                       y: {
+                           display: true,
+                           grid: {
+                               color: 'rgba(139, 143, 163, 0.1)'
+                           },
+                           ticks: {
+                               color: '#8b8fa3',
+                               callback: function(value) {
+                                   return '$' + value.toFixed(2);
+                               }
+                           }
+                       }
+                   }
+               }
+           });
+       }
+
+       function closeIndividualChart() {
+           const modal = document.getElementById('chartModal');
+           modal.style.display = 'none';
+           
+           if (chartInstances.individualChart && typeof chartInstances.individualChart.destroy === 'function') {
+               chartInstances.individualChart.destroy();
+           }
+       }
+
+       function formatDate(dateStr) {
+           const date = new Date(dateStr);
+           return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+       }
+
+       function generateDemoData() {
+           // Generate demo data matching the expected structure
+           const monthlyAverages = {};
+           const weeklyAverages = {};
+           const dailyAverages = {};
+           const monthlyStats = [];
+           const weeklyStats = [];
+           const dailyStats = [];
+           const lastGaps = [];
+           
+           const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+           const now = new Date();
+           
+           // Generate last 12 months of data
+           for (let i = 11; i >= 0; i--) {
+               const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+               const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+               const monthName = monthNames[date.getMonth()];
+               
+               // Generate time series for average chart
+               const timeLabels = [];
+               const avgPrices = [];
+               
+               for (let j = 0; j < 26; j++) {
+                   const hour = 9 + Math.floor(j * 0.25);
+                   const minute = 30 + ((j * 15) % 60);
+                   timeLabels.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+                   
+                   const progress = j / 25;
+                   const baseChange = (Math.random() - 0.5) * 20;
+                   const volatility = Math.sin(progress * Math.PI) * 5;
+                   
+                   avgPrices.push(baseChange + (Math.random() - 0.5) * volatility);
+               }
+               
+               const gapperCount = Math.floor(Math.random() * 50) + 20;
+               const avgOTC = (Math.random() - 0.5) * 20;
+               const totalVolume = Math.floor(Math.random() * 100000000) + 50000000;
+               const totalDollarVolume = Math.floor(Math.random() * 500000000) + 100000000;
+               
+               monthlyAverages[monthKey] = {
+                   month: monthName,
+                   year: date.getFullYear(),
+                   month_key: monthKey,
+                   period_name: `${monthName} ${date.getFullYear()}`,
+                   gapper_count: gapperCount,
+                   avg_gap_percentage: Math.random() * 100 + 50,
+                   avg_open_to_close: avgOTC,
+                   total_volume: totalVolume,
+                   total_dollar_volume: totalDollarVolume,
+                   avg_high_of_day: Math.max(...avgPrices) + 5,
+                   avg_low_of_day: Math.min(...avgPrices) - 5,
+                   time_labels: timeLabels,
+                   avg_prices: avgPrices,
+                   open_line: new Array(timeLabels.length).fill(0)
+               };
+               
+               monthlyStats.push({
+                   month: monthName,
+                   year: date.getFullYear(),
+                   month_key: monthKey,
+                   gapper_count: gapperCount,
+                   total_volume: totalVolume,
+                   total_dollar_volume: totalDollarVolume,
+                   avg_open_to_close: avgOTC
+               });
+           }
+           
+           // Generate weekly and daily demo data
+           for (let i = 11; i >= 0; i--) {
+               // Weekly
+               const weekDate = new Date(now);
+               weekDate.setDate(weekDate.getDate() - (i * 7));
+               const year = weekDate.getFullYear();
+               const week = Math.floor((weekDate - new Date(year, 0, 1)) / (7 * 24 * 60 * 60 * 1000)) + 1;
+               const weekKey = `${year}-W${week.toString().padStart(2, '0')}`;
+               
+               const weeklyGapperCount = Math.floor(Math.random() * 20) + 5;
+               const weeklyOTC = (Math.random() - 0.5) * 15;
+               const weeklyVolume = Math.floor(Math.random() * 30000000) + 10000000;
+               const weeklyDollarVolume = Math.floor(Math.random() * 150000000) + 50000000;
+               
+               const weeklyTimeLabels = [];
+               const weeklyAvgPrices = [];
+               
+               for (let j = 0; j < 26; j++) {
+                   const hour = 9 + Math.floor(j * 0.25);
+                   const minute = 30 + ((j * 15) % 60);
+                   weeklyTimeLabels.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+                   weeklyAvgPrices.push((Math.random() - 0.5) * 15);
+               }
+               
+               weeklyAverages[weekKey] = {
+                   week: week,
+                   year: year,
+                   week_key: weekKey,
+                   period_name: `Week ${week}, ${year}`,
+                   gapper_count: weeklyGapperCount,
+                   avg_open_to_close: weeklyOTC,
+                   total_volume: weeklyVolume,
+                   total_dollar_volume: weeklyDollarVolume,
+                   avg_high_of_day: Math.max(...weeklyAvgPrices) + 3,
+                   avg_low_of_day: Math.min(...weeklyAvgPrices) - 3,
+                   time_labels: weeklyTimeLabels,
+                   avg_prices: weeklyAvgPrices
+               };
+               
+               weeklyStats.push({
+                   week: week,
+                   year: year,
+                   week_key: weekKey,
+                   gapper_count: weeklyGapperCount,
+                   total_volume: weeklyVolume,
+                   total_dollar_volume: weeklyDollarVolume,
+                   avg_open_to_close: weeklyOTC
+               });
+               
+               // Daily
+               const dailyDate = new Date(now);
+               dailyDate.setDate(dailyDate.getDate() - i);
+               const dailyKey = dailyDate.toISOString().split('T')[0];
+               const dayName = dailyDate.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' });
+               
+               const dailyGapperCount = Math.floor(Math.random() * 10) + 2;
+               const dailyOTC = (Math.random() - 0.5) * 20;
+               const dailyVolume = Math.floor(Math.random() * 15000000) + 5000000;
+               const dailyDollarVolume = Math.floor(Math.random() * 75000000) + 25000000;
+               
+               const dailyTimeLabels = [];
+               const dailyAvgPrices = [];
+               
+               for (let j = 0; j < 26; j++) {
+                   const hour = 9 + Math.floor(j * 0.25);
+                   const minute = 30 + ((j * 15) % 60);
+                   dailyTimeLabels.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+                   dailyAvgPrices.push((Math.random() - 0.5) * 12);
+               }
+               
+               dailyAverages[dailyKey] = {
+                   date: dailyKey,
+                   day_name: dayName,
+                   period_name: dayName,
+                   gapper_count: dailyGapperCount,
+                   avg_open_to_close: dailyOTC,
+                   total_volume: dailyVolume,
+                   total_dollar_volume: dailyDollarVolume,
+                   avg_high_of_day: Math.max(...dailyAvgPrices) + 2,
+                   avg_low_of_day: Math.min(...dailyAvgPrices) - 2,
+                   time_labels: dailyTimeLabels,
+                   avg_prices: dailyAvgPrices
+               };
+               
+               dailyStats.push({
+                   date: dailyKey,
+                   day_name: dayName,
+                   gapper_count: dailyGapperCount,
+                   total_volume: dailyVolume,
+                   total_dollar_volume: dailyDollarVolume,
+                   avg_open_to_close: dailyOTC
+               });
+           }
+           
+           // Generate last gaps
+           const tickers = ['WHLR', 'DFLI', 'MITQ', 'AAPL', 'TSLA', 'NVDA', 'AMD', 'PLTR', 'COIN', 'RBLX'];
+           for (let i = 0; i < 20; i++) {
+               const date = new Date(now);
+               date.setDate(date.getDate() - i);
+               const dateStr = date.toISOString().split('T')[0];
+               
+               const ticker = tickers[i % tickers.length];
+               const gap = Math.random() * 200 + 50;
+               const otc = (Math.random() - 0.5) * 30;
+               
+               const timeLabels = [];
+               for (let j = 0; j < 20; j++) {
+                   const hour = 9 + Math.floor(j * 0.33);
+                   const minute = 30 + ((j * 20) % 60);
+                   timeLabels.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+               }
+               
+               lastGaps.push({
+                   ticker: ticker,
+                   gapPercentage: gap,
+                   volume: Math.floor(Math.random() * 50000000) + 1000000,
                    date: dateStr,
                    openToCloseChange: otc,
                    individualData: {
-                       time_labels: timeLabels.slice(0, 20),
-                       price_values: avgPrices.slice(0, 20).map(p => 10 + p * 0.1),
+                       time_labels: timeLabels,
+                       price_values: timeLabels.map(() => 10 + Math.random() * 5),
                        open: 10,
                        high: 15,
                        low: 8,
@@ -1434,8 +1581,11 @@
            
            return {
                monthlyAverages: monthlyAverages,
+               weeklyAverages: weeklyAverages,
+               dailyAverages: dailyAverages,
                monthlyStats: monthlyStats,
                weeklyStats: weeklyStats,
+               dailyStats: dailyStats,
                calendarData: {
                    gap_dates: lastGaps.map(g => g.date),
                    days_since_last_gap: 2
@@ -1496,11 +1646,8 @@
                    // Update current period
                    currentBottomPeriod = this.dataset.period;
                    
-                   // For now, only M (monthly) is implemented
-                   if (currentBottomPeriod === 'M') {
-                       createMonthlyAverageCharts();
-                   }
-                   // TODO: Implement D and W views
+                   // Recreate period charts
+                   createPeriodAverageCharts();
                });
            });
 
@@ -1524,10 +1671,8 @@
 
        // Window resize handler to refresh charts
        window.addEventListener('resize', function() {
-           // Debounce resize events
            clearTimeout(window.resizeTimeout);
            window.resizeTimeout = setTimeout(function() {
-               // Refresh all charts
                Object.values(chartInstances).forEach(chart => {
                    if (chart && typeof chart.resize === 'function') {
                        chart.resize();
@@ -1538,3 +1683,4 @@
    </script>
 </body>
 </html>
+                                                               
