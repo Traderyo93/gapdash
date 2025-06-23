@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Aequitas Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1d2e 0%, #16213e 50%, #0f3460 100%);
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(66, 153, 225, 0.1);
+            border-radius: 50%;
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+        }
+
+        .login-container {
+            background: rgba(37, 40, 54, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(66, 153, 225, 0.2);
+            padding: 50px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            position: relative;
+            z-index: 10;
+            animation: slideIn 0.8s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .logo-image {
+            max-width: 200px;
+            max-height: 80px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            filter: brightness(1.1) contrast(1.1);
+        }
+
+        .login-header p {
+            color: #a0aec0;
+            font-size: 1.1em;
+            font-weight: 400;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            color: #e2e8f0;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px 20px;
+            background: rgba(26, 29, 46, 0.8);
+            border: 2px solid rgba(74, 85, 104, 0.5);
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .form-group input::placeholder {
+            color: #718096;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 700;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(66, 153, 225, 0.3);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .login-btn.loading {
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .login-btn .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .login-btn.loading .spinner {
+            display: inline-block;
+        }
+
+        .error-message {
+            background: rgba(245, 101, 101, 0.1);
+            border: 1px solid rgba(245, 101, 101, 0.3);
+            color: #fed7d7;
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .success-message {
+            background: rgba(72, 187, 120, 0.1);
+            border: 1px solid rgba(72, 187, 120, 0.3);
+            color: #c6f6d5;
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+
+    <div class="login-container">
+        <div class="login-header">
+            <div class="logo">
+                <img src="https://i.ibb.co/8DfYwWdG/Aequitas-White-Logo.png" alt="Aequitas Logo" class="logo-image">
+            </div>
+            <p>Sign in to access your trading analytics</p>
+        </div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Enter your username" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+            
+            <button type="submit" class="login-btn" id="loginBtn">
+                <span class="spinner"></span>
+                <span class="btn-text">Sign In</span>
+            </button>
+            
+            <div class="error-message" id="errorMessage">
+                Invalid username or password. Please try again.
+            </div>
+            
+            <div class="success-message" id="successMessage">
+                Login successful! Redirecting to dashboard...
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Create floating particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 50;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                const size = Math.random() * 4 + 2;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = (Math.random() * 10 + 15) + 's';
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        createParticles();
+
+        // Login form handling
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const loginBtn = document.getElementById('loginBtn');
+            const errorMessage = document.getElementById('errorMessage');
+            const successMessage = document.getElementById('successMessage');
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // Show loading state
+            loginBtn.classList.add('loading');
+            loginBtn.querySelector('.btn-text').textContent = 'Signing In...';
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+            
+            try {
+                // Call your live API
+                const response = await fetch('https://gapdash.vercel.app/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Success
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('username', data.user.username);
+                    
+                    loginBtn.querySelector('.btn-text').textContent = 'Success!';
+                    successMessage.style.display = 'block';
+                    
+                    setTimeout(() => {
+                        window.location.href = 'https://gapdash.vercel.app/index.html';
+                    }, 1500);
+                } else {
+                    // Error
+                    throw new Error(data.error || 'Login failed');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                loginBtn.classList.remove('loading');
+                loginBtn.querySelector('.btn-text').textContent = 'Sign In';
+                errorMessage.textContent = error.message || 'Login failed. Please try again.';
+                errorMessage.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
