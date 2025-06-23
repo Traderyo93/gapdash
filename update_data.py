@@ -605,154 +605,154 @@ class GapDataUpdater:
         }
     
     def get_trading_days(self, days=250):
-   """
-   Get recent trading days - increased to 250 days to ensure 12 full months
-   """
-   trading_days = []
-   current_date = datetime.now(self.eastern)
-   
-   while len(trading_days) < days:
-       if current_date.weekday() < 5:  # Monday = 0, Friday = 4
-           trading_days.append(current_date)
-       current_date -= timedelta(days=1)
-   
-   return list(reversed(trading_days))
+        """
+        Get recent trading days - increased to 250 days to ensure 12 full months
+        """
+        trading_days = []
+        current_date = datetime.now(self.eastern)
+        
+        while len(trading_days) < days:
+            if current_date.weekday() < 5:  # Monday = 0, Friday = 4
+                trading_days.append(current_date)
+            current_date -= timedelta(days=1)
+        
+        return list(reversed(trading_days))
 
-def calculate_calendar_data(self, all_gappers):
-   """Calculate calendar data"""
-   gap_dates = set()
-   for gapper in all_gappers:
-       gap_dates.add(gapper['date'])
-   
-   # Calculate days since last gap
-   today = datetime.now().date()
-   days_since_gap = 0
-   
-   if gap_dates:
-       latest_gap = max(datetime.strptime(date, '%Y-%m-%d').date() for date in gap_dates)
-       days_since_gap = (today - latest_gap).days
-   
-   return {
-       'gap_dates': list(gap_dates),
-       'days_since_last_gap': max(0, days_since_gap)
-   }
+    def calculate_calendar_data(self, all_gappers):
+        """Calculate calendar data"""
+        gap_dates = set()
+        for gapper in all_gappers:
+            gap_dates.add(gapper['date'])
+        
+        # Calculate days since last gap
+        today = datetime.now().date()
+        days_since_gap = 0
+        
+        if gap_dates:
+            latest_gap = max(datetime.strptime(date, '%Y-%m-%d').date() for date in gap_dates)
+            days_since_gap = (today - latest_gap).days
+        
+        return {
+            'gap_dates': list(gap_dates),
+            'days_since_last_gap': max(0, days_since_gap)
+        }
 
-def daily_update(self):
-   """Main update function with best approach implementation"""
-   print(f"🚀 Starting BEST APPROACH Gap Scanner Update at {datetime.now()}")
-   print("🔧 Best approach features:")
-   print("   - 5-minute intervals for better resolution (78 data points)")
-   print("   - Intelligent price selection prioritizing extremes")
-   print("   - Natural intersection between price curves and HOD/LOD")
-   print("   - Market hours only calculations (9:30-4:00 PM EST)")
-   print("   - Full 12-month lookback with verification system")
-   
-   # Test API connection
-   try:
-       test_url = "https://api.polygon.io/v1/marketstatus/now"
-       test_response = requests.get(test_url, params={'apiKey': self.api_key}, timeout=10)
-       test_response.raise_for_status()
-       print("✓ API connection successful!")
-   except Exception as e:
-       print(f"❌ API connection failed: {e}")
-       return
-   
-   # Get trading days to ensure 12 full months
-   trading_days = self.get_trading_days(250)  # 250 days for 12+ months
-   print(f"Processing {len(trading_days)} trading days to ensure 12 full months...")
-   
-   all_gappers = []
-   
-   # Process each trading day
-   for i, date in enumerate(trading_days):
-       print(f"\nDay {i+1}/{len(trading_days)}: {date.strftime('%Y-%m-%d')}")
-       
-       daily_gappers = self.fetch_candidates_for_date(date)
-       if daily_gappers:
-           all_gappers.extend(daily_gappers)
-   
-   print(f"\n📊 Processing {len(all_gappers)} total gappers...")
-   
-   # Calculate all period averages
-   monthly_averages, weekly_averages, daily_averages = self.calculate_all_period_averages(all_gappers)
-   
-   # Calculate time period aggregates for top charts
-   time_aggregates = self.calculate_time_period_aggregates(monthly_averages, weekly_averages, daily_averages)
-   
-   # Calculate calendar data
-   calendar_data = self.calculate_calendar_data(all_gappers)
-   
-   # Get recent gaps for sidebar
-   recent_gappers = sorted(all_gappers, key=lambda x: x['date'], reverse=True)[:50]
-   
-   # Prepare complete cache data
-   cache_data = {
-       'lastUpdated': datetime.now().isoformat(),
-       'monthlyAverages': monthly_averages,
-       'weeklyAverages': weekly_averages,
-       'dailyAverages': daily_averages,
-       'monthlyStats': time_aggregates['monthly'],
-       'weeklyStats': time_aggregates['weekly'],
-       'dailyStats': time_aggregates['daily'],
-       'calendarData': calendar_data,
-       'lastGaps': [{
-           'ticker': g['ticker'],
-           'gapPercentage': g['gap_percentage'],
-           'volume': g['total_volume'],
-           'date': g['date'],
-           'openToCloseChange': g['open_to_close_change'],
-           'individualData': {
-               'time_labels': g['time_labels'],
-               'price_values': g['price_values'],
-               'open': g['open'],
-               'high': g['high'],
-               'low': g['low'],
-               'close': g['close']
-           }
-       } for g in recent_gappers],
-       'totalGappers': len(all_gappers),
-       'summaryStats': {
-           'total_gappers': len(all_gappers),
-           'avg_gap_percentage': round(sum(g['gap_percentage'] for g in all_gappers) / len(all_gappers), 2) if all_gappers else 0,
-           'avg_open_to_close': round(sum(g['open_to_close_change'] for g in all_gappers) / len(all_gappers), 2) if all_gappers else 0,
-           'days_since_last_gap': calendar_data['days_since_last_gap']
-       }
-   }
-   
-   # Save to cache file
-   with open(self.cache_file, 'w') as f:
-       json.dump(cache_data, f, indent=2)
-       
-   print(f"\n✅ BEST APPROACH UPDATE COMPLETE!")
-   print(f"📁 Results saved to: {self.cache_file}")
-   print(f"📊 Total gappers processed: {len(all_gappers)}")
-   print(f"📅 Monthly averages: {len(monthly_averages)} months")
-   print(f"📅 Weekly averages: {len(weekly_averages)} weeks")  
-   print(f"📅 Daily averages: {len(daily_averages)} days")
-   print(f"🗓️ Days since last gap: {calendar_data['days_since_last_gap']}")
-   
-   # Show date range covered
-   if monthly_averages:
-       month_keys = sorted(monthly_averages.keys())
-       print(f"📆 Month range: {month_keys[0]} to {month_keys[-1]}")
-   
-   # Sample verification info
-   if monthly_averages:
-       sample_month = list(monthly_averages.values())[0]
-       print(f"📈 Sample intersection verification from console output above")
-       print(f"📊 Using 5-minute intervals: {len(sample_month.get('time_labels', []))} data points per chart")
-   
-   # Verify file was created
-   if os.path.exists(self.cache_file):
-       file_size = os.path.getsize(self.cache_file)
-       print(f"✓ Cache file created successfully: {file_size:,} bytes")
-   else:
-       print("❌ ERROR: Cache file was not created!")
+    def daily_update(self):
+        """Main update function with best approach implementation"""
+        print(f"🚀 Starting BEST APPROACH Gap Scanner Update at {datetime.now()}")
+        print("🔧 Best approach features:")
+        print("   - 5-minute intervals for better resolution (78 data points)")
+        print("   - Intelligent price selection prioritizing extremes")
+        print("   - Natural intersection between price curves and HOD/LOD")
+        print("   - Market hours only calculations (9:30-4:00 PM EST)")
+        print("   - Full 12-month lookback with verification system")
+        
+        # Test API connection
+        try:
+            test_url = "https://api.polygon.io/v1/marketstatus/now"
+            test_response = requests.get(test_url, params={'apiKey': self.api_key}, timeout=10)
+            test_response.raise_for_status()
+            print("✓ API connection successful!")
+        except Exception as e:
+            print(f"❌ API connection failed: {e}")
+            return
+        
+        # Get trading days to ensure 12 full months
+        trading_days = self.get_trading_days(250)  # 250 days for 12+ months
+        print(f"Processing {len(trading_days)} trading days to ensure 12 full months...")
+        
+        all_gappers = []
+        
+        # Process each trading day
+        for i, date in enumerate(trading_days):
+            print(f"\nDay {i+1}/{len(trading_days)}: {date.strftime('%Y-%m-%d')}")
+            
+            daily_gappers = self.fetch_candidates_for_date(date)
+            if daily_gappers:
+                all_gappers.extend(daily_gappers)
+        
+        print(f"\n📊 Processing {len(all_gappers)} total gappers...")
+        
+        # Calculate all period averages
+        monthly_averages, weekly_averages, daily_averages = self.calculate_all_period_averages(all_gappers)
+        
+        # Calculate time period aggregates for top charts
+        time_aggregates = self.calculate_time_period_aggregates(monthly_averages, weekly_averages, daily_averages)
+        
+        # Calculate calendar data
+        calendar_data = self.calculate_calendar_data(all_gappers)
+        
+        # Get recent gaps for sidebar
+        recent_gappers = sorted(all_gappers, key=lambda x: x['date'], reverse=True)[:50]
+        
+        # Prepare complete cache data
+        cache_data = {
+            'lastUpdated': datetime.now().isoformat(),
+            'monthlyAverages': monthly_averages,
+            'weeklyAverages': weekly_averages,
+            'dailyAverages': daily_averages,
+            'monthlyStats': time_aggregates['monthly'],
+            'weeklyStats': time_aggregates['weekly'],
+            'dailyStats': time_aggregates['daily'],
+            'calendarData': calendar_data,
+            'lastGaps': [{
+                'ticker': g['ticker'],
+                'gapPercentage': g['gap_percentage'],
+                'volume': g['total_volume'],
+                'date': g['date'],
+                'openToCloseChange': g['open_to_close_change'],
+                'individualData': {
+                    'time_labels': g['time_labels'],
+                    'price_values': g['price_values'],
+                    'open': g['open'],
+                    'high': g['high'],
+                    'low': g['low'],
+                    'close': g['close']
+                }
+            } for g in recent_gappers],
+            'totalGappers': len(all_gappers),
+            'summaryStats': {
+                'total_gappers': len(all_gappers),
+                'avg_gap_percentage': round(sum(g['gap_percentage'] for g in all_gappers) / len(all_gappers), 2) if all_gappers else 0,
+                'avg_open_to_close': round(sum(g['open_to_close_change'] for g in all_gappers) / len(all_gappers), 2) if all_gappers else 0,
+                'days_since_last_gap': calendar_data['days_since_last_gap']
+            }
+        }
+        
+        # Save to cache file
+        with open(self.cache_file, 'w') as f:
+            json.dump(cache_data, f, indent=2)
+            
+        print(f"\n✅ BEST APPROACH UPDATE COMPLETE!")
+        print(f"📁 Results saved to: {self.cache_file}")
+        print(f"📊 Total gappers processed: {len(all_gappers)}")
+        print(f"📅 Monthly averages: {len(monthly_averages)} months")
+        print(f"📅 Weekly averages: {len(weekly_averages)} weeks")  
+        print(f"📅 Daily averages: {len(daily_averages)} days")
+        print(f"🗓️ Days since last gap: {calendar_data['days_since_last_gap']}")
+        
+        # Show date range covered
+        if monthly_averages:
+            month_keys = sorted(monthly_averages.keys())
+            print(f"📆 Month range: {month_keys[0]} to {month_keys[-1]}")
+        
+        # Sample verification info
+        if monthly_averages:
+            sample_month = list(monthly_averages.values())[0]
+            print(f"📈 Sample intersection verification from console output above")
+            print(f"📊 Using 5-minute intervals: {len(sample_month.get('time_labels', []))} data points per chart")
+        
+        # Verify file was created
+        if os.path.exists(self.cache_file):
+            file_size = os.path.getsize(self.cache_file)
+            print(f"✓ Cache file created successfully: {file_size:,} bytes")
+        else:
+            print("❌ ERROR: Cache file was not created!")
 
 def main():
-   """Main entry point"""
-   updater = GapDataUpdater()
-   updater.daily_update()
+    """Main entry point"""
+    updater = GapDataUpdater()
+    updater.daily_update()
 
 if __name__ == "__main__":
-   main()
+    main()
