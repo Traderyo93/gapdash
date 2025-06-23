@@ -38,6 +38,7 @@ jobs:
         if [ -f "data/gap_data_cache.json" ]; then
           echo "Data file created successfully"
           ls -la data/
+          echo "File size: $(du -h data/gap_data_cache.json)"
         else
           echo "ERROR: Data file was not created"
           exit 1
