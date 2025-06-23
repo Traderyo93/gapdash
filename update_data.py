@@ -27,7 +27,7 @@ class GapDataUpdater:
         
         self.eastern = pytz.timezone('US/Eastern')
         self.data_dir = 'data'
-        self.cache_file = os.path.join(self.data_dir, 'gap_data_cache.json')
+        self.cache_file = 'gap_data_cache.json'  # Save directly in root
         
         os.makedirs(self.data_dir, exist_ok=True)
         self.polygon_base_url = "https://api.polygon.io/v2"
