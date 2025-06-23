@@ -1023,22 +1023,30 @@
             const labels = periodData.time_labels || [];
             const avgPrices = periodData.avg_prices || [];
             
+            // Calculate dynamic Y-axis range
+            const maxPrice = Math.max(...avgPrices);
+            const minPrice = Math.min(...avgPrices);
+            const hodPct = periodData.avg_high_of_day_pct || maxPrice + 5;
+            const lodPct = periodData.avg_low_of_day_pct || minPrice - 5;
+            
+            // Dynamic Y-axis with 10% padding
+            const yMax = Math.max(hodPct, maxPrice) + 10;
+            const yMin = Math.min(lodPct, minPrice) - 10;
+            
             // Green line: Average HOD percentage (horizontal line)
-            const avgHODPercentage = periodData.avg_high_of_day_pct || 10;
-            const hodLine = new Array(labels.length).fill(avgHODPercentage);
+            const hodLine = new Array(labels.length).fill(hodPct);
             
             // Red line: Average LOD percentage (horizontal line)  
-            const avgLODPercentage = periodData.avg_low_of_day_pct || -10;
-            const lodLine = new Array(labels.length).fill(avgLODPercentage);
+            const lodLine = new Array(labels.length).fill(lodPct);
             
-            // Yellow line: Average HOD time (vertical line data)
+            // Yellow line: Average HOD time (vertical line)
             const avgHODTime = periodData.avg_hod_time || 0.5; // 0-1 scale
             const hodTimeIndex = Math.round(avgHODTime * (labels.length - 1));
             
-            // Create vertical line data for HOD time
+            // Create vertical line data for HOD time (from bottom to top of chart)
             const hodTimeLine = labels.map((_, index) => {
                 if (index === hodTimeIndex) {
-                    return Math.max(avgHODPercentage + 5, Math.max(...avgPrices) + 5);
+                    return yMax; // Extend to top of chart
                 }
                 return null;
             });
@@ -1146,6 +1154,8 @@
                         y: {
                             display: true,
                             grid: { color: 'rgba(139, 143, 163, 0.15)' },
+                            min: yMin,  // Dynamic minimum
+                            max: yMax,  // Dynamic maximum
                             ticks: {
                                 color: '#8b8fa3',
                                 maxTicksLimit: 5,
@@ -1438,13 +1448,13 @@
                     month: monthName,
                     year: date.getFullYear(),
                     month_key: monthKey,
-                    period_name: `${monthName} ${date.getFullYear()}`,
-                    gapper_count: gapperCount,
-                    avg_gap_percentage: Math.random() * 100 + 50,
-                    avg_open_to_close: avgOTC,
-                    total_volume: totalVolume,
-                    total_dollar_volume: totalDollarVolume,
-                    avg_high_of_day_pct: Math.max(...avgPrices) + 5,
+                   period_name: `${monthName} ${date.getFullYear()}`,
+                   gapper_count: gapperCount,
+                   avg_gap_percentage: Math.random() * 100 + 50,
+                   avg_open_to_close: avgOTC,
+                   total_volume: totalVolume,
+                   total_dollar_volume: totalDollarVolume,
+                   avg_high_of_day_pct: Math.max(...avgPrices) + 5,
                    avg_low_of_day_pct: Math.min(...avgPrices) - 5,
                    avg_hod_time: 0.3 + Math.random() * 0.4, // Between 30-70% of trading day
                    avg_hod_time_str: '11:45', // Sample HOD time
