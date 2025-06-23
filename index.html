@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -28,7 +27,6 @@
             margin: 0 auto;
         }
 
-        /* Filter Bar */
         .filter-bar {
             display: flex;
             gap: 15px;
@@ -60,75 +58,6 @@
             font-weight: 600;
         }
 
-        .top-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-section {
-            background: #252836;
-            border-radius: 8px;
-            padding: 20px;
-        }
-
-        .stat-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 15px;
-            color: #8b8fa3;
-            font-size: 13px;
-            font-weight: 500;
-        }
-
-        .stat-header .info-icon {
-            width: 16px;
-            height: 16px;
-            border: 1px solid #8b8fa3;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            cursor: help;
-        }
-
-        .time-filter {
-            display: flex;
-            gap: 4px;
-            margin-left: auto;
-        }
-
-        .time-btn {
-            background: #4a5568;
-            border: none;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .time-btn.active {
-            background: #4299e1;
-        }
-
-        .time-btn:hover {
-            background: #5a6578;
-        }
-
-        .time-btn.active:hover {
-            background: #3182ce;
-        }
-
-        .chart-container {
-            height: 300px;
-            position: relative;
-        }
-
         .main-content {
             display: grid;
             grid-template-columns: 1fr 300px;
@@ -137,45 +66,46 @@
 
         .charts-section {
             display: grid;
-            grid-template-rows: 1fr 1fr;
+            grid-template-rows: auto 1fr;
             gap: 20px;
         }
 
-        .chart-card {
+        /* Period Controls */
+        .period-controls {
             background: #252836;
             border-radius: 8px;
             padding: 20px;
-        }
-
-        .chart-header {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 15px;
-            color: #8b8fa3;
-            font-size: 13px;
-            font-weight: 500;
         }
 
-        .period-selector {
+        .period-title {
+            color: #8b8fa3;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .period-toggles {
             display: flex;
-            gap: 4px;
-            margin-left: auto;
+            gap: 8px;
         }
 
         .period-btn {
             background: #4a5568;
             border: none;
             color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
 
         .period-btn.active {
             background: #4299e1;
+            transform: translateY(-1px);
         }
 
         .period-btn:hover {
@@ -186,6 +116,83 @@
             background: #3182ce;
         }
 
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            background: #252836;
+            border-radius: 8px;
+            padding: 20px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .chart-item {
+            background: #1a1d2e;
+            border-radius: 8px;
+            padding: 15px;
+            position: relative;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .chart-ticker {
+            color: #4299e1;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .chart-gap {
+            color: #48bb78;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .chart-gap.negative {
+            color: #f56565;
+        }
+
+        .chart-date {
+            color: #8b8fa3;
+            font-size: 11px;
+            position: absolute;
+            top: 15px;
+            right: 15px;
+        }
+
+        .mini-chart {
+            height: 120px;
+            position: relative;
+        }
+
+        .chart-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 11px;
+            color: #8b8fa3;
+        }
+
+        .chart-stat {
+            text-align: center;
+        }
+
+        .chart-stat-value {
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .chart-stat-label {
+            color: #8b8fa3;
+        }
+
+        /* Sidebar */
         .sidebar {
             display: flex;
             flex-direction: column;
@@ -248,65 +255,30 @@
             color: #f56565;
         }
 
-        .calendar-grid {
+        .summary-stats {
             display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 4px;
-            margin-top: 10px;
-        }
-
-        .calendar-day {
-            aspect-ratio: 1;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .calendar-day.has-gaps {
-            background: #4299e1;
-            color: white;
-        }
-
-        .calendar-day.no-gaps {
-            background: #2d3748;
-            color: #8b8fa3;
-        }
-
-        .calendar-day.weekend {
-            background: #1a1d2e;
-            color: #4a5568;
-        }
-
-        .calendar-day:hover {
-            transform: scale(1.1);
-        }
-
-        .date-info {
-            text-align: right;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
             margin-bottom: 15px;
         }
 
-        .date-info .date {
-            color: #4299e1;
-            font-weight: 600;
+        .stat-box {
+            background: #1a1d2e;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
         }
 
-        .date-info .days-since {
+        .stat-value {
+            color: #4299e1;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .stat-label {
             color: #8b8fa3;
             font-size: 12px;
-        }
-
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 200px;
-            color: #8b8fa3;
+            margin-top: 5px;
         }
 
         .refresh-btn {
@@ -341,32 +313,40 @@
             color: #fed7d7;
         }
 
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #8b8fa3;
+        }
+
         @media (max-width: 1200px) {
             .main-content {
                 grid-template-columns: 1fr;
             }
             
-            .top-stats {
-                grid-template-columns: 1fr;
+            .charts-grid {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             }
         }
 
         /* Custom scrollbar */
-        .gaps-list::-webkit-scrollbar {
+        .gaps-list::-webkit-scrollbar, .charts-grid::-webkit-scrollbar {
             width: 6px;
         }
 
-        .gaps-list::-webkit-scrollbar-track {
+        .gaps-list::-webkit-scrollbar-track, .charts-grid::-webkit-scrollbar-track {
             background: #1a1d2e;
             border-radius: 3px;
         }
 
-        .gaps-list::-webkit-scrollbar-thumb {
+        .gaps-list::-webkit-scrollbar-thumb, .charts-grid::-webkit-scrollbar-thumb {
             background: #4a5568;
             border-radius: 3px;
         }
 
-        .gaps-list::-webkit-scrollbar-thumb:hover {
+        .gaps-list::-webkit-scrollbar-thumb:hover, .charts-grid::-webkit-scrollbar-thumb:hover {
             background: #5a6578;
         }
     </style>
@@ -383,7 +363,7 @@
         <div class="filter-bar">
             <div class="filter-item">
                 <span class="filter-label">Gap value between</span>
-                <span class="filter-value">20% and 500%</span>
+                <span class="filter-value">45% and 1000%</span>
             </div>
             <div class="filter-item">
                 <span class="filter-label">Volume greater than</span>
@@ -391,64 +371,7 @@
             </div>
             <div class="filter-item">
                 <span class="filter-label">Price greater than</span>
-                <span class="filter-value">$1</span>
-            </div>
-        </div>
-
-        <!-- Top Statistics Section -->
-        <div class="top-stats">
-            <!-- Gappers Section -->
-            <div class="stat-section">
-                <div class="stat-header">
-                    <span>Gappers</span>
-                    <div class="info-icon">?</div>
-                    <div class="time-filter">
-                        <button class="time-btn active" data-period="EMA">EMA</button>
-                        <button class="time-btn" data-period="SMA">SMA</button>
-                        <button class="time-btn" data-period="D">D</button>
-                        <button class="time-btn" data-period="W">W</button>
-                        <button class="time-btn active" data-period="M">M</button>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="gappersChart"></canvas>
-                </div>
-            </div>
-
-            <!-- Volume Section -->
-            <div class="stat-section">
-                <div class="stat-header">
-                    <span>Volume</span>
-                    <div class="info-icon">?</div>
-                    <div class="time-filter">
-                        <button class="time-btn active" data-period="EMA">EMA</button>
-                        <button class="time-btn" data-period="SMA">SMA</button>
-                        <button class="time-btn" data-period="D">D</button>
-                        <button class="time-btn" data-period="W">W</button>
-                        <button class="time-btn active" data-period="M">M</button>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="volumeChart"></canvas>
-                </div>
-            </div>
-
-            <!-- Dollar Volume Section -->
-            <div class="stat-section">
-                <div class="stat-header">
-                    <span>$ volume</span>
-                    <div class="info-icon">?</div>
-                    <div class="time-filter">
-                        <button class="time-btn active" data-period="EMA">EMA</button>
-                        <button class="time-btn" data-period="SMA">SMA</button>
-                        <button class="time-btn" data-period="D">D</button>
-                        <button class="time-btn" data-period="W">W</button>
-                        <button class="time-btn active" data-period="M">M</button>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="dollarVolumeChart"></canvas>
-                </div>
+                <span class="filter-value">$0.30</span>
             </div>
         </div>
 
@@ -456,57 +379,53 @@
         <div class="main-content">
             <!-- Charts Section -->
             <div class="charts-section">
-                <!-- Average Change from Open Chart -->
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <span>Average change from open</span>
-                        <div class="info-icon">?</div>
-                        <div class="period-selector">
-                            <button class="period-btn" data-period="D">D</button>
-                            <button class="period-btn" data-period="W">W</button>
-                            <button class="period-btn active" data-period="M">M</button>
-                        </div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="avgChangeChart"></canvas>
+                <!-- Period Controls -->
+                <div class="period-controls">
+                    <div class="period-title">Average change from open</div>
+                    <div class="period-toggles">
+                        <button class="period-btn active" data-period="D">D</button>
+                        <button class="period-btn" data-period="W">W</button>
+                        <button class="period-btn" data-period="M">M</button>
                     </div>
                 </div>
 
-                <!-- Weekly Chart -->
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <span>Average change from open</span>
-                        <div class="info-icon">?</div>
-                        <div class="period-selector">
-                            <button class="period-btn" data-period="D">D</button>
-                            <button class="period-btn active" data-period="W">W</button>
-                            <button class="period-btn" data-period="M">M</button>
-                        </div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="weeklyChangeChart"></canvas>
-                    </div>
+                <!-- Charts Grid -->
+                <div class="charts-grid" id="chartsGrid">
+                    <!-- Individual charts will be populated here -->
                 </div>
             </div>
 
             <!-- Sidebar -->
             <div class="sidebar">
-                <!-- Calendar -->
+                <!-- Summary Stats -->
                 <div class="sidebar-card">
-                    <div class="date-info">
-                        <div class="date" id="currentDate">2025-06-22</div>
-                        <div class="days-since" id="daysSince">2 days</div>
+                    <div class="sidebar-header">
+                        <span>Summary</span>
                     </div>
-                    <div class="calendar-grid" id="calendarGrid">
-                        <!-- Calendar will be generated by JavaScript -->
+                    <div class="summary-stats">
+                        <div class="stat-box">
+                            <div class="stat-value" id="totalGappers">0</div>
+                            <div class="stat-label">Total Gappers</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="avgGap">0%</div>
+                            <div class="stat-label">Avg Gap</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="avgOTC">0%</div>
+                            <div class="stat-label">Avg O-to-C</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="daysSince">0</div>
+                            <div class="stat-label">Days Since</div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Last Gaps -->
                 <div class="sidebar-card">
                     <div class="sidebar-header">
-                        <span>Last gaps</span>
-                        <div class="info-icon">?</div>
+                        <span>Recent gaps</span>
                     </div>
                     <div class="gaps-list" id="gapsList">
                         <!-- Gap items will be populated here -->
@@ -517,16 +436,15 @@
     </div>
 
     <div id="loadingIndicator" class="loading" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
-        Loading dashboard data...
+        Loading intraday data...
     </div>
-            <script>
+    <script>
         // ===== AUTHENTICATION SYSTEM =====
         function checkAuthentication() {
             const token = localStorage.getItem('authToken');
             const username = localStorage.getItem('username');
             
             if (!token || !username) {
-                // No authentication found, redirect to login
                 window.location.href = '/login.html';
                 return false;
             }
@@ -542,13 +460,13 @@
 
         // Check authentication immediately
         if (!checkAuthentication()) {
-            // Will redirect to login, stop execution
             throw new Error('Authentication required');
         }
 
         // ===== DASHBOARD CODE =====
         let dashboardData = null;
-        let currentPeriod = 'M';
+        let currentPeriod = 'D';
+        let chartInstances = {};
 
         async function loadData() {
             const loadingEl = document.getElementById('loadingIndicator');
@@ -563,7 +481,7 @@
 
                 const rawData = await response.json();
                 dashboardData = processGapDataCache(rawData);
-                updateDashboard(dashboardData);
+                updateDashboard();
 
                 loadingEl.style.display = 'none';
             } catch (error) {
@@ -571,373 +489,266 @@
                 
                 // Use demo data
                 dashboardData = generateDemoData();
-                updateDashboard(dashboardData);
+                updateDashboard();
                 loadingEl.style.display = 'none';
             }
         }
 
         function processGapDataCache(rawData) {
-            console.log('Processing gap data cache with new format...');
-            console.log(`Found ${rawData.totalGappers} total gappers`);
-            console.log(`Found ${rawData.monthlyStats.length} monthly data points`);
-            console.log(`Found ${rawData.lastGaps.length} recent gappers`);
-
+            console.log('Processing intraday gap data cache...');
+            
             return {
-                last_updated: rawData.lastUpdated,
+                timePeriodsData: rawData.timePeriodsData || { daily: {}, weekly: {}, monthly: {} },
+                summaryStats: rawData.summaryStats || {},
                 lastGaps: rawData.lastGaps || [],
-                monthlyStats: rawData.monthlyStats || [],
-                weeklyStats: rawData.weeklyStats || [],
-                calendarData: rawData.calendarData || {},
-                totalGappers: rawData.totalGappers || 0
+                totalGappers: rawData.totalGappers || 0,
+                lastUpdated: rawData.lastUpdated
             };
         }
 
-        function updateDashboard(data) {
-            updateCurrentDate();
-            createTopCharts(data.monthlyStats);
-            createAvgChangeChart(data.monthlyStats);
-            createWeeklyChart(data.weeklyStats);
-            createCalendar(data.calendarData);
-            updateLastGaps(data.lastGaps);
+        function updateDashboard() {
+            updateSummaryStats();
+            updateChartsForPeriod(currentPeriod);
+            updateLastGaps();
         }
 
-        function updateCurrentDate() {
-            const now = new Date();
-            document.getElementById('currentDate').textContent = now.toISOString().split('T')[0];
+        function updateSummaryStats() {
+            const stats = dashboardData.summaryStats;
             
-            // Use real days since last gap from data
-            const daysSince = dashboardData.calendarData?.days_since_last_gap || 1;
-            document.getElementById('daysSince').textContent = `${daysSince} days`;
+            document.getElementById('totalGappers').textContent = stats.total_gappers || 0;
+            document.getElementById('avgGap').textContent = `${stats.avg_gap_percentage || 0}%`;
+            document.getElementById('avgOTC').textContent = `${stats.avg_open_to_close || 0}%`;
+            document.getElementById('daysSince').textContent = stats.days_since_last_gap || 0;
         }
 
-        function createTopCharts(monthlyStats) {
-            createGappersChart(monthlyStats);
-            createVolumeChart(monthlyStats);
-            createDollarVolumeChart(monthlyStats);
-        }
-
-        function createGappersChart(monthlyStats) {
-            const ctx = document.getElementById('gappersChart').getContext('2d');
+        function updateChartsForPeriod(period) {
+            const chartsGrid = document.getElementById('chartsGrid');
+            chartsGrid.innerHTML = '';
             
-            // SAFE destroy check - this is the fix!
-            if (window.gappersChart && typeof window.gappersChart.destroy === 'function') {
-                window.gappersChart.destroy();
-            }
-
-            const labels = monthlyStats.map(m => `${m.month}-${m.year.toString().slice(-2)}`);
-            const data = monthlyStats.map(m => m.gapper_count);
-
-            window.gappersChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        borderColor: '#fbbf24',
-                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHoverRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            grid: { display: false },
-                            ticks: { 
-                                color: '#8b8fa3',
-                                maxTicksLimit: 6
-                            }
-                        },
-                        y: {
-                            display: true,
-                            grid: { color: '#374151' },
-                            ticks: { color: '#8b8fa3' }
-                        }
-                    }
+            // Clear existing chart instances
+            Object.values(chartInstances).forEach(chart => {
+                if (chart && typeof chart.destroy === 'function') {
+                    chart.destroy();
                 }
             });
-        }
+            chartInstances = {};
 
-        function createVolumeChart(monthlyStats) {
-            const ctx = document.getElementById('volumeChart').getContext('2d');
-            
-            // SAFE destroy check - this is the fix!
-            if (window.volumeChart && typeof window.volumeChart.destroy === 'function') {
-                window.volumeChart.destroy();
+            let periodData = {};
+            switch(period) {
+                case 'D':
+                    periodData = dashboardData.timePeriodsData.daily || {};
+                    break;
+                case 'W':
+                    periodData = dashboardData.timePeriodsData.weekly || {};
+                    break;
+                case 'M':
+                    periodData = dashboardData.timePeriodsData.monthly || {};
+                    break;
             }
 
-            const labels = monthlyStats.map(m => `${m.month}-${m.year.toString().slice(-2)}`);
-            const data = monthlyStats.map(m => m.total_volume / 1000000);
+            // Sort periods by date (most recent first)
+            const sortedPeriods = Object.keys(periodData).sort((a, b) => b.localeCompare(a));
+            
+            // Create charts for each period
+            sortedPeriods.slice(0, 20).forEach(periodKey => {
+                const gappers = periodData[periodKey];
+                if (gappers && gappers.length > 0) {
+                    gappers.forEach(gapper => {
+                        createMiniChart(gapper, period);
+                    });
+                }
+            });
 
-            window.volumeChart = new Chart(ctx, {
+            if (sortedPeriods.length === 0) {
+                chartsGrid.innerHTML = '<div style="text-align: center; color: #8b8fa3; padding: 40px;">No data available for this period</div>';
+            }
+        }
+
+        function createMiniChart(gapper, period) {
+            const chartsGrid = document.getElementById('chartsGrid');
+            
+            // Create chart container
+            const chartItem = document.createElement('div');
+            chartItem.className = 'chart-item';
+            
+            const chartId = `chart_${gapper.ticker}_${gapper.date.replace(/-/g, '')}`;
+            
+            chartItem.innerHTML = `
+                <div class="chart-header">
+                    <div class="chart-ticker">${gapper.ticker}</div>
+                    <div class="chart-gap ${gapper.gap_percentage >= 0 ? '' : 'negative'}">
+                        ${gapper.gap_percentage > 0 ? '+' : ''}${gapper.gap_percentage.toFixed(1)}%
+                    </div>
+                </div>
+                <div class="chart-date">${formatDate(gapper.date)}</div>
+                <div class="mini-chart">
+                    <canvas id="${chartId}"></canvas>
+                </div>
+                <div class="chart-stats">
+                    <div class="chart-stat">
+                        <div class="chart-stat-value">$${gapper.high.toFixed(2)}</div>
+                        <div class="chart-stat-label">HIGH</div>
+                    </div>
+                    <div class="chart-stat">
+                        <div class="chart-stat-value">$${gapper.open.toFixed(2)}</div>
+                        <div class="chart-stat-label">OPEN</div>
+                    </div>
+                    <div class="chart-stat">
+                        <div class="chart-stat-value">$${gapper.low.toFixed(2)}</div>
+                        <div class="chart-stat-label">LOW</div>
+                    </div>
+                    <div class="chart-stat">
+                        <div class="chart-stat-value ${gapper.open_to_close_change >= 0 ? 'gap-positive' : 'gap-negative'}">
+                            ${gapper.open_to_close_change > 0 ? '+' : ''}${gapper.open_to_close_change.toFixed(1)}%
+                        </div>
+                        <div class="chart-stat-label">O-to-C</div>
+                    </div>
+                </div>
+            `;
+            
+            chartsGrid.appendChild(chartItem);
+            
+            // Create the actual chart
+            setTimeout(() => {
+                createIntradayChart(chartId, gapper);
+            }, 10);
+        }
+
+        function createIntradayChart(chartId, gapper) {
+            const ctx = document.getElementById(chartId);
+            if (!ctx) return;
+            
+            const ctxContext = ctx.getContext('2d');
+            
+            // Prepare chart data
+            const labels = gapper.times || [];
+            const prices = gapper.prices || [];
+            
+            // Create reference lines data
+            const openLine = new Array(labels.length).fill(gapper.open);
+            const highLine = new Array(labels.length).fill(gapper.high);
+            const lowLine = new Array(labels.length).fill(gapper.low);
+            
+            const chart = new Chart(ctxContext, {
                 type: 'line',
                 data: {
                     labels: labels,
-                    datasets: [{
-                        data: data,
-                        borderColor: '#fbbf24',
-                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHoverRadius: 4
-                    }]
+                    datasets: [
+                        {
+                            label: 'High',
+                            data: highLine,
+                            borderColor: '#48bb78',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            tension: 0
+                        },
+                        {
+                            label: 'Price',
+                            data: prices,
+                            borderColor: '#4299e1',
+                            backgroundColor: 'rgba(66, 153, 225, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 3,
+                            tension: 0.2
+                        },
+                        {
+                            label: 'Open',
+                            data: openLine,
+                            borderColor: '#fbbf24',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1,
+                            borderDash: [3, 3],
+                            pointRadius: 0,
+                            tension: 0
+                        },
+                        {
+                            label: 'Low',
+                            data: lowLine,
+                            borderColor: '#f56565',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            tension: 0
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
                     plugins: {
-                        legend: { display: false }
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(37, 40, 54, 0.95)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#8b8fa3',
+                            borderColor: '#4299e1',
+                            borderWidth: 1,
+                            displayColors: true,
+                            callbacks: {
+                                title: function(context) {
+                                    return `${gapper.ticker} - ${context[0].label}`;
+                                },
+                                label: function(context) {
+                                    return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        }
                     },
                     scales: {
                         x: {
                             display: true,
-                            grid: { display: false },
-                            ticks: { 
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
                                 color: '#8b8fa3',
-                                maxTicksLimit: 6
+                                maxTicksLimit: 6,
+                                font: {
+                                    size: 10
+                                }
                             }
                         },
                         y: {
                             display: true,
-                            grid: { color: '#374151' },
-                            ticks: { 
+                            grid: {
+                                color: 'rgba(139, 143, 163, 0.1)'
+                            },
+                            ticks: {
                                 color: '#8b8fa3',
+                                maxTicksLimit: 5,
+                                font: {
+                                    size: 10
+                                },
                                 callback: function(value) {
-                                    return value + 'M';
+                                    return '$' + value.toFixed(2);
                                 }
                             }
                         }
                     }
                 }
             });
-        }
-
-        function createDollarVolumeChart(monthlyStats) {
-            const ctx = document.getElementById('dollarVolumeChart').getContext('2d');
             
-            // SAFE destroy check - this is the fix!
-            if (window.dollarVolumeChart && typeof window.dollarVolumeChart.destroy === 'function') {
-                window.dollarVolumeChart.destroy();
-            }
-
-            const labels = monthlyStats.map(m => `${m.month}-${m.year.toString().slice(-2)}`);
-            const data = monthlyStats.map(m => m.total_dollar_volume / 1000000);
-
-            window.dollarVolumeChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        borderColor: '#fbbf24',
-                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHoverRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            grid: { display: false },
-                            ticks: { 
-                                color: '#8b8fa3',
-                                maxTicksLimit: 6
-                            }
-                        },
-                        y: {
-                            display: true,
-                            grid: { color: '#374151' },
-                            ticks: { 
-                                color: '#8b8fa3',
-                                callback: function(value) {
-                                    return '$' + value + 'M';
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            // Store chart instance for cleanup
+            chartInstances[chartId] = chart;
         }
 
-        function createAvgChangeChart(monthlyStats) {
-            const ctx = document.getElementById('avgChangeChart').getContext('2d');
-            
-            // SAFE destroy check - this is the fix!
-            if (window.avgChangeChart && typeof window.avgChangeChart.destroy === 'function') {
-                window.avgChangeChart.destroy();
-            }
-
-            const labels = monthlyStats.slice(-12).map(m => `${m.month}-${m.year.toString().slice(-2)}`);
-            const data = monthlyStats.slice(-12).map(m => m.avg_open_to_close);
-
-            window.avgChangeChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        borderWidth: 2,
-                        fill: false,
-                        tension: 0.4,
-                        pointRadius: 2,
-                        pointHoverRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            grid: { color: '#374151' },
-                            ticks: { color: '#8b8fa3' }
-                        },
-                        y: {
-                            display: true,
-                            grid: { color: '#374151' },
-                            ticks: { 
-                                color: '#8b8fa3',
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function createWeeklyChart(weeklyStats) {
-            const ctx = document.getElementById('weeklyChangeChart').getContext('2d');
-            
-            // SAFE destroy check - this is the fix!
-            if (window.weeklyChangeChart && typeof window.weeklyChangeChart.destroy === 'function') {
-                window.weeklyChangeChart.destroy();
-            }
-
-            const labels = weeklyStats.map(w => w.week_key);
-            const data = weeklyStats.map(w => w.avg_open_to_close);
-
-            window.weeklyChangeChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        borderWidth: 2,
-                        fill: false,
-                        tension: 0.4,
-                        pointRadius: 1,
-                        pointHoverRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            grid: { color: '#374151' },
-                            ticks: { 
-                                color: '#8b8fa3',
-                                maxTicksLimit: 8
-                            }
-                        },
-                        y: {
-                            display: true,
-                            grid: { color: '#374151' },
-                            ticks: { 
-                                color: '#8b8fa3',
-                                callback: function(value) {
-                                    return value + '%';
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function createCalendar(calendarData) {
-            const calendar = document.getElementById('calendarGrid');
-            calendar.innerHTML = '';
-
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth();
-            
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const firstDay = new Date(year, month, 1).getDay();
-
-            // Get gap dates from real data
-            const gapDates = new Set(calendarData?.gap_dates || []);
-
-            // Add empty cells for days before the first day of the month
-            for (let i = 0; i < firstDay; i++) {
-                const emptyDay = document.createElement('div');
-                emptyDay.className = 'calendar-day weekend';
-                calendar.appendChild(emptyDay);
-            }
-
-            // Add days of the month
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dayEl = document.createElement('div');
-                dayEl.className = 'calendar-day';
-                dayEl.textContent = day;
-
-                const dayOfWeek = new Date(year, month, day).getDay();
-                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-                if (dayOfWeek === 0 || dayOfWeek === 6) {
-                    dayEl.classList.add('weekend');
-                } else {
-                    // Use real gap data
-                    if (gapDates.has(dateString)) {
-                        dayEl.classList.add('has-gaps');
-                    } else {
-                        dayEl.classList.add('no-gaps');
-                    }
-                }
-
-                calendar.appendChild(dayEl);
-            }
-        }
-
-        function updateLastGaps(lastGaps) {
+        function updateLastGaps() {
             const container = document.getElementById('gapsList');
             container.innerHTML = '';
 
-            lastGaps.slice(0, 20).forEach(gap => {
+            dashboardData.lastGaps.slice(0, 25).forEach(gap => {
                 const gapItem = document.createElement('div');
                 gapItem.className = 'gap-item';
 
@@ -945,64 +756,109 @@
                 const percentageClass = isPositive ? 'gap-positive' : 'gap-negative';
 
                 gapItem.innerHTML = `
-                    <div class="gap-ticker">${gap.ticker}</div>
-                    <div class="gap-percentage ${percentageClass}">${gap.gapPercentage > 0 ? '+' : ''}${gap.gapPercentage.toFixed(1)}%</div>
+                    <div>
+                        <div class="gap-ticker">${gap.ticker}</div>
+                        <div style="font-size: 11px; color: #8b8fa3;">${formatDate(gap.date)}</div>
+                    </div>
+                    <div>
+                        <div class="gap-percentage ${percentageClass}">${gap.gapPercentage > 0 ? '+' : ''}${gap.gapPercentage.toFixed(1)}%</div>
+                        <div style="font-size: 11px; color: #8b8fa3; text-align: right;">
+                            ${gap.openToCloseChange > 0 ? '+' : ''}${gap.openToCloseChange.toFixed(1)}%
+                        </div>
+                    </div>
                 `;
 
                 container.appendChild(gapItem);
             });
         }
 
-        function generateDemoData() {
-            // Generate demo data as fallback
-            const monthlyStats = [];
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            
-            const now = new Date();
-            for (let i = 23; i >= 0; i--) {
-                const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                monthlyStats.push({
-                    month: monthNames[date.getMonth()],
-                    year: date.getFullYear(),
-                    gapper_count: Math.floor(Math.random() * 150) + 20,
-                    total_volume: Math.floor(Math.random() * 70000000) + 10000000,
-                    total_dollar_volume: Math.floor(Math.random() * 400000000) + 50000000,
-                    avg_open_to_close: Math.random() * 10 - 5
-                });
-            }
-
-            const lastGaps = [];
-            const tickers = ['WHLR', 'DFLI', 'MITQ', 'AAPL', 'TSLA', 'NVDA', 'AMD', 'PLTR', 'COIN', 'RBLX'];
-            
-            for (let i = 0; i < 15; i++) {
-                lastGaps.push({
-                    ticker: tickers[i % tickers.length],
-                    gapPercentage: Math.random() * 200 - 50,
-                    volume: Math.floor(Math.random() * 50000000) + 1000000,
-                    date: now.toISOString().split('T')[0]
-                });
-            }
-
-            const weeklyStats = [];
-            for (let i = 0; i < 12; i++) {
-                const weekNum = 15 + i;
-                weeklyStats.push({
-                    week_key: `2025-W${weekNum}`,
-                    avg_open_to_close: Math.random() * 10 - 5
-                });
-            }
-
-            return {
-                last_updated: new Date().toISOString(),
-                monthlyStats: monthlyStats,
-                weeklyStats: weeklyStats,
-                lastGaps: lastGaps,
-                calendarData: { gap_dates: [], days_since_last_gap: 1 },
-                totalGappers: 1000
-            };
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         }
 
-        // Event listeners for period buttons
+        function generateDemoData() {
+            // Generate demo intraday data
+            const demoData = {
+                timePeriodsData: {
+                    daily: {},
+                    weekly: {},
+                    monthly: {}
+                },
+                summaryStats: {
+                    total_gappers: 156,
+                    avg_gap_percentage: 78.5,
+                    avg_open_to_close: -8.2,
+                    days_since_last_gap: 2
+                },
+                lastGaps: [],
+                totalGappers: 156
+            };
+
+            // Create demo charts for last 10 days
+            const tickers = ['WHLR', 'DFLI', 'MITQ', 'AAPL', 'TSLA', 'NVDA', 'AMD', 'PLTR', 'COIN', 'RBLX'];
+            const today = new Date();
+            
+            for (let i = 0; i < 10; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toISOString().split('T')[0];
+                
+                const ticker = tickers[i % tickers.length];
+                const open = 10 + Math.random() * 50;
+                const gap = 50 + Math.random() * 100;
+                const high = open * (1 + (gap + Math.random() * 20) / 100);
+                const low = open * (0.8 + Math.random() * 0.15);
+                const close = low + Math.random() * (high - low);
+                
+                // Generate 15-minute intervals
+                const times = [];
+                const prices = [];
+                const startHour = 9;
+                const startMin = 30;
+                
+                for (let j = 0; j < 26; j++) { // 6.5 hours * 4 intervals per hour
+                    const totalMins = j * 15;
+                    const hour = startHour + Math.floor(totalMins / 60);
+                    const min = (startMin + (totalMins % 60)) % 60;
+                    times.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
+                    
+                    // Generate realistic price movement
+                    const progress = j / 25;
+                    const volatility = 0.05 + Math.random() * 0.1;
+                    let price = open + (close - open) * progress + (Math.random() - 0.5) * open * volatility;
+                    price = Math.max(low, Math.min(high, price));
+                    prices.push(price);
+                }
+                
+                const gapper = {
+                    ticker: ticker,
+                    date: dateStr,
+                    gap_percentage: gap,
+                    times: times,
+                    prices: prices,
+                    open: open,
+                    high: high,
+                    low: low,
+                    close: close,
+                    open_to_close_change: ((close - open) / open) * 100,
+                    total_volume: Math.floor(Math.random() * 50000000) + 1000000
+                };
+                
+                demoData.timePeriodsData.daily[dateStr] = [gapper];
+                demoData.lastGaps.push({
+                    ticker: ticker,
+                    gapPercentage: gap,
+                    volume: gapper.total_volume,
+                    date: dateStr,
+                    openToCloseChange: gapper.open_to_close_change
+                });
+            }
+            
+            return demoData;
+        }
+
+        // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
             // Set up authentication display
             const username = localStorage.getItem('username') || 'User';
@@ -1011,24 +867,14 @@
             // Add event listeners to period buttons
             document.querySelectorAll('.period-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    const section = this.closest('.chart-card');
-                    section.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                    // Remove active class from all buttons
+                    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                    // Add active class to clicked button
                     this.classList.add('active');
                     
-                    const period = this.dataset.period;
-                    console.log('Period changed to:', period);
-                });
-            });
-
-            // Add event listeners to time filter buttons
-            document.querySelectorAll('.time-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const section = this.closest('.stat-section');
-                    section.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    const period = this.dataset.period;
-                    console.log('Time filter changed to:', period);
+                    // Update current period and refresh charts
+                    currentPeriod = this.dataset.period;
+                    updateChartsForPeriod(currentPeriod);
                 });
             });
 
@@ -1038,4 +884,3 @@
     </script>
 </body>
 </html>
-    
