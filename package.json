@@ -1,0 +1,9 @@
+{
+  "name": "aequitas-dashboard",
+  "version": "1.0.0",
+  "description": "Secure Aequitas Trading Dashboard",
+  "dependencies": {
+    "bcrypt": "^5.1.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
