@@ -1,5 +1,5 @@
 
-            <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -519,7 +519,7 @@
     <div id="loadingIndicator" class="loading" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
         Loading dashboard data...
     </div>
-    <script>
+            <script>
         // ===== AUTHENTICATION SYSTEM =====
         function checkAuthentication() {
             const token = localStorage.getItem('authToken');
@@ -619,7 +619,8 @@
         function createGappersChart(monthlyStats) {
             const ctx = document.getElementById('gappersChart').getContext('2d');
             
-            if (window.gappersChart) {
+            // SAFE destroy check - this is the fix!
+            if (window.gappersChart && typeof window.gappersChart.destroy === 'function') {
                 window.gappersChart.destroy();
             }
 
@@ -669,7 +670,8 @@
         function createVolumeChart(monthlyStats) {
             const ctx = document.getElementById('volumeChart').getContext('2d');
             
-            if (window.volumeChart) {
+            // SAFE destroy check - this is the fix!
+            if (window.volumeChart && typeof window.volumeChart.destroy === 'function') {
                 window.volumeChart.destroy();
             }
 
@@ -724,7 +726,8 @@
         function createDollarVolumeChart(monthlyStats) {
             const ctx = document.getElementById('dollarVolumeChart').getContext('2d');
             
-            if (window.dollarVolumeChart) {
+            // SAFE destroy check - this is the fix!
+            if (window.dollarVolumeChart && typeof window.dollarVolumeChart.destroy === 'function') {
                 window.dollarVolumeChart.destroy();
             }
 
@@ -779,7 +782,8 @@
         function createAvgChangeChart(monthlyStats) {
             const ctx = document.getElementById('avgChangeChart').getContext('2d');
             
-            if (window.avgChangeChart) {
+            // SAFE destroy check - this is the fix!
+            if (window.avgChangeChart && typeof window.avgChangeChart.destroy === 'function') {
                 window.avgChangeChart.destroy();
             }
 
@@ -831,7 +835,8 @@
         function createWeeklyChart(weeklyStats) {
             const ctx = document.getElementById('weeklyChangeChart').getContext('2d');
             
-            if (window.weeklyChangeChart) {
+            // SAFE destroy check - this is the fix!
+            if (window.weeklyChangeChart && typeof window.weeklyChangeChart.destroy === 'function') {
                 window.weeklyChangeChart.destroy();
             }
 
