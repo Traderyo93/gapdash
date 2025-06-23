@@ -1,20 +1,10 @@
 {
   "functions": {
     "api/login.js": {
-      "runtime": "@vercel/node"
+      "runtime": "@vercel/node@18.x"
     },
     "api/verify.js": {
-      "runtime": "@vercel/node"
+      "runtime": "@vercel/node@18.x"
     }
-  },
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ]
+  }
 }
