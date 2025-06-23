@@ -2,16 +2,17 @@ name: Update Gapper Data
 
 on:
   schedule:
-    # Runs at 9 PM UK time (4 PM EST)
+    # Runs at 9 PM UK time (4 PM EST) 
     - cron: '0 21 * * *'
   workflow_dispatch: # Allows manual trigger
 
 jobs:
   update-data:
     runs-on: ubuntu-latest
+    timeout-minutes: 120  # Increased timeout for detailed data processing
     
     permissions:
-      contents: write  # This gives write permission to the repository
+      contents: write
     
     steps:
     - uses: actions/checkout@v3
@@ -27,26 +28,65 @@ jobs:
       run: |
         pip install pandas numpy requests pytz
     
-    - name: Run data collector
+    - name: Run detailed data collector
       env:
         POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
       run: |
         python update_data.py
+      timeout-minutes: 100  # Specific timeout for data collection
     
     - name: Check if data file was created
       run: |
         if [ -f "data/gap_data_cache.json" ]; then
-          echo "Data file created successfully"
+          echo "✅ Data file created successfully"
           ls -la data/
-          echo "File size: $(du -h data/gap_data_cache.json)"
+          echo "📁 File size: $(du -h data/gap_data_cache.json)"
+          
+          # Check if file has reasonable content
+          if [ $(wc -c < "data/gap_data_cache.json") -gt 1000 ]; then
+            echo "✅ Data file has sufficient content"
+            head -20 data/gap_data_cache.json
+          else
+            echo "❌ WARNING: Data file seems too small"
+            cat data/gap_data_cache.json
+          fi
         else
-          echo "ERROR: Data file was not created"
+          echo "❌ ERROR: Data file was not created"
           exit 1
         fi
+    
+    - name: Validate JSON structure
+      run: |
+        python -c "
+        import json
+        with open('data/gap_data_cache.json', 'r') as f:
+            data = json.load(f)
+        print('✅ JSON is valid')
+        print(f'📊 Time periods: {list(data.get(\"timePeriodsData\", {}).keys())}')
+        print(f'📈 Total gappers: {data.get(\"totalGappers\", 0)}')
+        print(f'📅 Last updated: {data.get(\"lastUpdated\", \"Unknown\")}')
+        "
     
     - name: Commit and push if changed
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add data/gap_data_cache.json
-        git diff --staged --quiet && echo "No changes to commit" || (git commit -m "Update gapper data $(date)" && git push)
+        
+        if git diff --staged --quiet; then
+          echo "📝 No changes to commit"
+        else
+          git commit -m "Update detailed intraday gapper data $(date)"
+          
+          # Retry logic for push conflicts
+          for i in {1..5}; do
+            if git push; then
+              echo "✅ Successfully pushed changes"
+              break
+            else
+              echo "⚠️ Push failed on attempt $i, retrying..."
+              git pull origin main --rebase --strategy-option=ours
+              sleep 5
+            fi
+          done
+        fi
