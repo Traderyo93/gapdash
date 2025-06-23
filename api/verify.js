@@ -2,8 +2,7 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'aequitas-secret-key-2025';
 
-export default async function handler(req, res) {
-  // Set CORS headers
+module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -24,18 +23,14 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'No token provided' });
     }
 
-    // Verify the token
     const decoded = jwt.verify(token, JWT_SECRET);
     
     res.status(200).json({
       valid: true,
-      user: {
-        id: decoded.id,
-        username: decoded.username
-      }
+      user: { id: decoded.id, username: decoded.username }
     });
 
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });
   }
-}
+};
