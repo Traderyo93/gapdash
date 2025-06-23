@@ -136,9 +136,9 @@ class GapDataUpdater:
             if actual_gap < 50:  # Must be 50%+ gap
                 return None
             
-            # Create 15-minute intervals for averaging
+            # Create 15-minute intervals for averaging - FIXED PANDAS WARNING
             market_hours.set_index('t', inplace=True)
-            resampled = market_hours.resample('15T').agg({
+            resampled = market_hours.resample('15min').agg({
                 'o': 'first',
                 'h': 'max', 
                 'l': 'min',
@@ -330,16 +330,16 @@ class GapDataUpdater:
                 all_high_curves.append(high_interp)
                 all_low_curves.append(low_interp)
                 
-                # Track HOD timing
+                # Track HOD timing from the processed data
                 high_of_day_times.append(gapper['hod_time_percentage'])
             
-            # Accumulate totals
+            # Accumulate totals - USE THE PROCESSED MARKET HOURS DATA
             total_volume += gapper['total_volume']
             total_dollar_volume += gapper['dollar_volume']
             total_gap += gapper['gap_percentage']
             total_otc += gapper['open_to_close_change']
-            high_of_day_percentages.append(gapper['high_of_day_pct'])
-            low_of_day_percentages.append(gapper['low_of_day_pct'])
+            high_of_day_percentages.append(gapper['high_of_day_pct'])  # This is market hours HOD
+            low_of_day_percentages.append(gapper['low_of_day_pct'])    # This is market hours LOD
         
         if not all_price_curves:
             return None
@@ -349,7 +349,7 @@ class GapDataUpdater:
         avg_highs = np.mean(all_high_curves, axis=0)
         avg_lows = np.mean(all_low_curves, axis=0)
         
-        # Calculate average HOD percentage and timing
+        # Calculate average HOD percentage and timing FROM MARKET HOURS DATA
         avg_high_of_day_pct = np.mean(high_of_day_percentages)  # Average % gain to HOD
         avg_low_of_day_pct = np.mean(low_of_day_percentages)    # Average % loss to LOD
         avg_hod_time = np.mean(high_of_day_times)               # Average time HOD occurs (0-1)
@@ -417,10 +417,11 @@ class GapDataUpdater:
             daily_key = gapper['date']
             daily_data[daily_key].append(gapper)
         
-        # Calculate monthly averages
-        monthly_averages = {}
+        # Calculate monthly averages - FIXED TO SHOW 12 MONTHS BACK
         month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
         
+        # Process all months first
+        all_monthly_averages = {}
         for month_key, gappers in monthly_data.items():
             if gappers:
                 year, month = month_key.split('-')
@@ -432,7 +433,11 @@ class GapDataUpdater:
                         'year': int(year),
                         'month_key': month_key
                     })
-                    monthly_averages[month_key] = period_avg
+                    all_monthly_averages[month_key] = period_avg
+
+        # Take the last 12 months that have data
+        sorted_months = sorted(all_monthly_averages.items(), key=lambda x: x[0])
+        monthly_averages = dict(sorted_months[-12:])  # Last 12 months with data
         
         # Calculate weekly averages (last 12 weeks)
         weekly_averages = {}
@@ -629,7 +634,6 @@ class GapDataUpdater:
         }
         
         # Save to cache file
-        # Save to cache file
         with open(self.cache_file, 'w') as f:
             json.dump(cache_data, f, indent=2)
             
@@ -660,4 +664,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
