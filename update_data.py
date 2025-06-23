@@ -145,7 +145,7 @@ class GapDataUpdater:
             
             # Create 15-minute intervals for averaging - FIXED PANDAS WARNING
             market_hours.set_index('t', inplace=True)
-            resampled = market_hours.resample('15min').agg({
+            resampled = market_hours.resample('5min').agg({
                 'o': 'first',
                 'h': 'max', 
                 'l': 'min',
@@ -316,7 +316,7 @@ class GapDataUpdater:
             
         # Create standardized time points for market hours ONLY (9:30-4:00 PM)
         market_minutes = 6.5 * 60  # 390 minutes
-        time_points = np.linspace(0, 1, 26)  # 26 points for 15-min intervals
+        time_points = np.linspace(0, 1, 78)  # 26 points for 15-min intervals
         
         all_price_curves = []
         all_high_curves = []
