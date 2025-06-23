@@ -189,8 +189,8 @@
 
         .monthly-charts-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-            gap: 25px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
             max-height: 80vh;
             overflow-y: auto;
         }
@@ -198,9 +198,9 @@
         .monthly-chart-item {
             background: #1a1d2e;
             border-radius: 8px;
-            padding: 25px;
+            padding: 15px;
             position: relative;
-            min-height: 320px;
+            min-height: 280px;
         }
 
         .monthly-chart-header {
@@ -226,9 +226,9 @@
         }
 
         .monthly-chart-container {
-            height: 260px;
+            height: 200px;
             position: relative;
-            margin-top: 15px;
+            margin-top: 10px;
         }
 
         .sidebar {
@@ -441,9 +441,9 @@
         }
 
         /* Responsive Design */
-        @media (max-width: 1600px) {
+        @media (max-width: 1400px) {
             .monthly-charts-grid {
-                grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+                grid-template-columns: repeat(3, 1fr);
             }
         }
 
@@ -634,7 +634,6 @@
     <div id="loadingIndicator" class="loading" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
         Loading dashboard data...
     </div>
-
     <script>
         // ===== AUTHENTICATION SYSTEM =====
         function checkAuthentication() {
@@ -963,477 +962,492 @@
             
             // Sort periods by date (most recent first)
             const sortedPeriods = Object.keys(periodData).sort((a, b) => b.localeCompare(a));
-           const periodsToShow = currentBottomPeriod === 'D' ? 12 : (currentBottomPeriod === 'W' ? 12 : 12);
-           
-           // Create charts for each period
-           sortedPeriods.slice(0, periodsToShow).forEach(periodKey => {
-               const periodChartData = periodData[periodKey];
-               createPeriodChart(periodChartData, periodKey, title);
-           });
+            const periodsToShow = currentBottomPeriod === 'D' ? 12 : (currentBottomPeriod === 'W' ? 12 : 12);
+            
+            // Create charts for each period
+            sortedPeriods.slice(0, periodsToShow).forEach(periodKey => {
+                const periodChartData = periodData[periodKey];
+                createPeriodChart(periodChartData, periodKey, title);
+            });
 
-           if (sortedPeriods.length === 0) {
-               chartsGrid.innerHTML = `<div style="text-align: center; color: #8b8fa3; padding: 40px;">No ${title.toLowerCase()} average data available</div>`;
-           }
-       }
+            if (sortedPeriods.length === 0) {
+                chartsGrid.innerHTML = `<div style="text-align: center; color: #8b8fa3; padding: 40px;">No ${title.toLowerCase()} average data available</div>`;
+            }
+        }
 
-       function createPeriodChart(periodData, periodKey, title) {
-           const chartsGrid = document.getElementById('monthlyChartsGrid');
-           
-           // Create chart container
-           const chartItem = document.createElement('div');
-           chartItem.className = 'monthly-chart-item';
-           
-           const chartId = `period_${periodKey.replace(/[-:]/g, '_')}`;
-           
-           let displayTitle = '';
-           if (currentBottomPeriod === 'M') {
-               displayTitle = `${periodData.month} ${periodData.year}`;
-           } else if (currentBottomPeriod === 'W') {
-               displayTitle = `Week ${periodData.week}, ${periodData.year}`;
-           } else {
-               displayTitle = periodData.day_name;
-           }
-           
-           chartItem.innerHTML = `
-               <div class="monthly-chart-header">
-                   <div class="monthly-chart-title">${displayTitle}</div>
-                   <div class="monthly-chart-stats">
-                       <div>${periodData.gapper_count} gappers</div>
-                       <div>${periodData.avg_open_to_close > 0 ? '+' : ''}${periodData.avg_open_to_close}% avg</div>
-                   </div>
-               </div>
-               <div class="monthly-chart-container">
-                   <canvas id="${chartId}"></canvas>
-               </div>
-           `;
-           
-           chartsGrid.appendChild(chartItem);
-           
-           // Create the actual chart
-           setTimeout(() => {
-               createPeriodAverageChart(chartId, periodData);
-           }, 10);
-       }
+        function createPeriodChart(periodData, periodKey, title) {
+            const chartsGrid = document.getElementById('monthlyChartsGrid');
+            
+            // Create chart container
+            const chartItem = document.createElement('div');
+            chartItem.className = 'monthly-chart-item';
+            
+            const chartId = `period_${periodKey.replace(/[-:]/g, '_')}`;
+            
+            let displayTitle = '';
+            if (currentBottomPeriod === 'M') {
+                displayTitle = `${periodData.month} ${periodData.year}`;
+            } else if (currentBottomPeriod === 'W') {
+                displayTitle = `Week ${periodData.week}, ${periodData.year}`;
+            } else {
+                displayTitle = periodData.day_name;
+            }
+            
+            chartItem.innerHTML = `
+                <div class="monthly-chart-header">
+                    <div class="monthly-chart-title">${displayTitle}</div>
+                    <div class="monthly-chart-stats">
+                        <div>${periodData.gapper_count} gappers</div>
+                        <div>${periodData.avg_open_to_close > 0 ? '+' : ''}${periodData.avg_open_to_close}% avg</div>
+                    </div>
+                </div>
+                <div class="monthly-chart-container">
+                    <canvas id="${chartId}"></canvas>
+                </div>
+            `;
+            
+            chartsGrid.appendChild(chartItem);
+            
+            // Create the actual chart
+            setTimeout(() => {
+                createPeriodAverageChart(chartId, periodData);
+            }, 10);
+        }
 
-       function createPeriodAverageChart(chartId, periodData) {
-           const ctx = document.getElementById(chartId);
-           if (!ctx) return;
-           
-           const ctxContext = ctx.getContext('2d');
-           
-           const labels = periodData.time_labels || [];
-           const avgPrices = periodData.avg_prices || [];
-           
-           // Use static HOD and LOD from the data (horizontal lines)
-           const avgHighOfDay = periodData.avg_high_of_day || 10;
-           const avgLowOfDay = periodData.avg_low_of_day || -10;
-           
-           // Create static horizontal lines
-           const hodLine = new Array(labels.length).fill(avgHighOfDay);
-           const lodLine = new Array(labels.length).fill(avgLowOfDay);
-           const openLine = new Array(labels.length).fill(0); // Reference at 0%
+        function createPeriodAverageChart(chartId, periodData) {
+            const ctx = document.getElementById(chartId);
+            if (!ctx) return;
+            
+            const ctxContext = ctx.getContext('2d');
+            
+            const labels = periodData.time_labels || [];
+            const avgPrices = periodData.avg_prices || [];
+            
+            // Green line: Average HOD percentage (horizontal line)
+            const avgHODPercentage = periodData.avg_high_of_day_pct || 10;
+            const hodLine = new Array(labels.length).fill(avgHODPercentage);
+            
+            // Red line: Average LOD percentage (horizontal line)  
+            const avgLODPercentage = periodData.avg_low_of_day_pct || -10;
+            const lodLine = new Array(labels.length).fill(avgLODPercentage);
+            
+            // Yellow line: Average HOD time (vertical line data)
+            const avgHODTime = periodData.avg_hod_time || 0.5; // 0-1 scale
+            const hodTimeIndex = Math.round(avgHODTime * (labels.length - 1));
+            
+            // Create vertical line data for HOD time
+            const hodTimeLine = labels.map((_, index) => {
+                if (index === hodTimeIndex) {
+                    return Math.max(avgHODPercentage + 5, Math.max(...avgPrices) + 5);
+                }
+                return null;
+            });
+            
+            // Reference line at 0% (open)
+            const openLine = new Array(labels.length).fill(0);
 
-           const chart = new Chart(ctxContext, {
-               type: 'line',
-               data: {
-                   labels: labels,
-                   datasets: [
-                       {
-                           label: 'High',
-                           data: hodLine,
-                           borderColor: '#48bb78',
-                           backgroundColor: 'transparent',
-                           borderWidth: 3,
-                           borderDash: [8, 4],
-                           pointRadius: 0,
-                           tension: 0
-                       },
-                       {
-                           label: 'Price',
-                           data: avgPrices,
-                           borderColor: '#4299e1',
-                           backgroundColor: 'rgba(66, 153, 225, 0.1)',
-                           borderWidth: 3,
-                           fill: false,
-                           pointRadius: 0,
-                           pointHoverRadius: 4,
-                           tension: 0.3
-                       },
-                       {
-                           label: 'Open',
-                           data: openLine,
-                           borderColor: '#fbbf24',
-                           backgroundColor: 'transparent',
-                           borderWidth: 3,
-                           borderDash: [6, 3],
-                           pointRadius: 0,
-                           tension: 0
-                       },
-                       {
-                           label: 'Low',
-                           data: lodLine,
-                           borderColor: '#f56565',
-                           backgroundColor: 'transparent',
-                           borderWidth: 3,
-                           borderDash: [8, 4],
-                           pointRadius: 0,
-                           tension: 0
-                       }
-                   ]
-               },
-               options: {
-                   responsive: true,
-                   maintainAspectRatio: false,
-                   interaction: {
-                       intersect: false,
-                       mode: 'index'
-                   },
-                   plugins: {
-                       legend: {
-                           display: false
-                       },
-                       tooltip: {
-                           enabled: true,
-                           backgroundColor: 'rgba(37, 40, 54, 0.95)',
-                           titleColor: '#ffffff',
-                           bodyColor: '#8b8fa3',
-                           borderColor: '#4299e1',
-                           borderWidth: 1,
-                           displayColors: true,
-                           titleFont: { size: 14 },
-                           bodyFont: { size: 13 },
-                           callbacks: {
-                               title: function(context) {
-                                   return `${periodData.period_name} - ${context[0].label}`;
-                               },
-                               label: function(context) {
-                                   return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`;
-                               }
-                           }
-                       }
-                   },
-                   scales: {
-                       x: {
-                           display: true,
-                           grid: {
-                               display: true,
-                               color: 'rgba(139, 143, 163, 0.1)'
-                           },
-                           ticks: {
-                               color: '#8b8fa3',
-                               maxTicksLimit: 6,
-                               font: {
-                                   size: 12
-                               }
-                           }
-                       },
-                       y: {
-                           display: true,
-                           grid: {
-                               color: 'rgba(139, 143, 163, 0.15)'
-                           },
-                           ticks: {
-                               color: '#8b8fa3',
-                               maxTicksLimit: 6,
-                               font: {
-                                   size: 12
-                               },
-                               callback: function(value) {
-                                   return value.toFixed(0) + '%';
-                               }
-                           }
-                       }
-                   }
-               }
-           });
-           
-           chartInstances[chartId] = chart;
-       }
+            const chart = new Chart(ctxContext, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Avg HOD %',
+                            data: hodLine,
+                            borderColor: '#48bb78',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [6, 3],
+                            pointRadius: 0,
+                            tension: 0
+                        },
+                        {
+                            label: 'Avg HOD Time',
+                            data: hodTimeLine,
+                            borderColor: '#fbbf24',
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            tension: 0,
+                            spanGaps: false
+                        },
+                        {
+                            label: 'Price Action',
+                            data: avgPrices,
+                            borderColor: '#4299e1',
+                            backgroundColor: 'rgba(66, 153, 225, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 3,
+                            tension: 0.2
+                        },
+                        {
+                            label: 'Open (0%)',
+                            data: openLine,
+                            borderColor: '#8b8fa3',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1,
+                            borderDash: [2, 2],
+                            pointRadius: 0,
+                            tension: 0
+                        },
+                        {
+                            label: 'Avg LOD %',
+                            data: lodLine,
+                            borderColor: '#f56565',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [6, 3],
+                            pointRadius: 0,
+                            tension: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(37, 40, 54, 0.95)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#8b8fa3',
+                            borderColor: '#4299e1',
+                            borderWidth: 1,
+                            callbacks: {
+                                title: function(context) {
+                                    return `${periodData.period_name} - ${context[0].label}`;
+                                },
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y?.toFixed(1) || 'N/A'}%`;
+                                },
+                                afterBody: function() {
+                                    return `Avg HOD Time: ${periodData.avg_hod_time_str || 'N/A'}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            grid: { display: true, color: 'rgba(139, 143, 163, 0.1)' },
+                            ticks: {
+                                color: '#8b8fa3',
+                                maxTicksLimit: 4,
+                                font: { size: 10 }
+                            }
+                        },
+                        y: {
+                            display: true,
+                            grid: { color: 'rgba(139, 143, 163, 0.15)' },
+                            ticks: {
+                                color: '#8b8fa3',
+                                maxTicksLimit: 5,
+                                font: { size: 10 },
+                                callback: function(value) {
+                                    return value.toFixed(0) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            chartInstances[chartId] = chart;
+        }
 
-       function createCalendar(calendarData) {
-           const calendar = document.getElementById('calendarGrid');
-           calendar.innerHTML = '';
+        function createCalendar(calendarData) {
+            const calendar = document.getElementById('calendarGrid');
+            calendar.innerHTML = '';
 
-           const now = new Date();
-           const year = now.getFullYear();
-           const month = now.getMonth();
-           
-           const daysInMonth = new Date(year, month + 1, 0).getDate();
-           const firstDay = new Date(year, month, 1).getDay();
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const firstDay = new Date(year, month, 1).getDay();
 
-           // Get gap dates from real data
-           const gapDates = new Set(calendarData?.gap_dates || []);
+            // Get gap dates from real data
+            const gapDates = new Set(calendarData?.gap_dates || []);
 
-           // Add empty cells for days before the first day of the month
-           for (let i = 0; i < firstDay; i++) {
-               const emptyDay = document.createElement('div');
-               emptyDay.className = 'calendar-day weekend';
-               calendar.appendChild(emptyDay);
-           }
+            // Add empty cells for days before the first day of the month
+            for (let i = 0; i < firstDay; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'calendar-day weekend';
+                calendar.appendChild(emptyDay);
+            }
 
-           // Add days of the month
-           for (let day = 1; day <= daysInMonth; day++) {
-               const dayEl = document.createElement('div');
-               dayEl.className = 'calendar-day';
-               dayEl.textContent = day;
+            // Add days of the month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day';
+                dayEl.textContent = day;
 
-               const dayOfWeek = new Date(year, month, day).getDay();
-               const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayOfWeek = new Date(year, month, day).getDay();
+                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-               if (dayOfWeek === 0 || dayOfWeek === 6) {
-                   dayEl.classList.add('weekend');
-               } else {
-                   if (gapDates.has(dateString)) {
-                       dayEl.classList.add('has-gaps');
-                   } else {
-                       dayEl.classList.add('no-gaps');
-                   }
-               }
+                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    dayEl.classList.add('weekend');
+                } else {
+                    if (gapDates.has(dateString)) {
+                        dayEl.classList.add('has-gaps');
+                    } else {
+                        dayEl.classList.add('no-gaps');
+                    }
+                }
 
-               calendar.appendChild(dayEl);
-           }
-       }
+                calendar.appendChild(dayEl);
+            }
+        }
 
-       function updateLastGaps(lastGaps) {
-           const container = document.getElementById('gapsList');
-           container.innerHTML = '';
+        function updateLastGaps(lastGaps) {
+            const container = document.getElementById('gapsList');
+            container.innerHTML = '';
 
-           lastGaps.slice(0, 25).forEach(gap => {
-               const gapItem = document.createElement('div');
-               gapItem.className = 'gap-item';
-               gapItem.onclick = () => showIndividualChart(gap);
+            lastGaps.slice(0, 25).forEach(gap => {
+                const gapItem = document.createElement('div');
+                gapItem.className = 'gap-item';
+                gapItem.onclick = () => showIndividualChart(gap);
 
-               const isPositive = gap.gapPercentage >= 0;
-               const percentageClass = isPositive ? 'gap-positive' : 'gap-negative';
-               const otcClass = gap.openToCloseChange >= 0 ? 'gap-positive' : 'gap-negative';
+                const isPositive = gap.gapPercentage >= 0;
+                const percentageClass = isPositive ? 'gap-positive' : 'gap-negative';
+                const otcClass = gap.openToCloseChange >= 0 ? 'gap-positive' : 'gap-negative';
 
-               gapItem.innerHTML = `
-                   <div>
-                       <div class="gap-ticker">${gap.ticker}</div>
-                       <div style="font-size: 11px; color: #8b8fa3;">${formatDate(gap.date)}</div>
-                   </div>
-                   <div>
-                       <div class="gap-percentage ${percentageClass}">${gap.gapPercentage > 0 ? '+' : ''}${gap.gapPercentage.toFixed(1)}%</div>
-                       <div class="${otcClass}" style="font-size: 11px; text-align: right;">
-                           ${gap.openToCloseChange > 0 ? '+' : ''}${gap.openToCloseChange.toFixed(1)}%
-                       </div>
-                   </div>
-               `;
+                gapItem.innerHTML = `
+                    <div>
+                        <div class="gap-ticker">${gap.ticker}</div>
+                        <div style="font-size: 11px; color: #8b8fa3;">${formatDate(gap.date)}</div>
+                    </div>
+                    <div>
+                        <div class="gap-percentage ${percentageClass}">${gap.gapPercentage > 0 ? '+' : ''}${gap.gapPercentage.toFixed(1)}%</div>
+                        <div class="${otcClass}" style="font-size: 11px; text-align: right;">
+                            ${gap.openToCloseChange > 0 ? '+' : ''}${gap.openToCloseChange.toFixed(1)}%
+                        </div>
+                    </div>
+                `;
 
-               container.appendChild(gapItem);
-           });
-       }
+                container.appendChild(gapItem);
+            });
+        }
 
-       function showIndividualChart(gapData) {
-           const modal = document.getElementById('chartModal');
-           const modalTitle = document.getElementById('modalChartTitle');
-           
-           modalTitle.textContent = `${gapData.ticker} - ${formatDate(gapData.date)} - ${gapData.gapPercentage > 0 ? '+' : ''}${gapData.gapPercentage.toFixed(1)}%`;
-           
-           modal.style.display = 'flex';
-           
-           // Clear existing individual chart
-           if (chartInstances.individualChart && typeof chartInstances.individualChart.destroy === 'function') {
-               chartInstances.individualChart.destroy();
-           }
-           
-           // Create individual chart
-           setTimeout(() => {
-               createIndividualChart(gapData);
-           }, 100);
-       }
+        function showIndividualChart(gapData) {
+            const modal = document.getElementById('chartModal');
+            const modalTitle = document.getElementById('modalChartTitle');
+            
+            modalTitle.textContent = `${gapData.ticker} - ${formatDate(gapData.date)} - ${gapData.gapPercentage > 0 ? '+' : ''}${gapData.gapPercentage.toFixed(1)}%`;
+            
+            modal.style.display = 'flex';
+            
+            // Clear existing individual chart
+            if (chartInstances.individualChart && typeof chartInstances.individualChart.destroy === 'function') {
+                chartInstances.individualChart.destroy();
+            }
+            
+            // Create individual chart
+            setTimeout(() => {
+                createIndividualChart(gapData);
+            }, 100);
+        }
 
-       function createIndividualChart(gapData) {
-           const ctx = document.getElementById('individualChart').getContext('2d');
-           
-           const individualData = gapData.individualData;
-           if (!individualData) {
-               console.error('No individual chart data available');
-               return;
-           }
+        function createIndividualChart(gapData) {
+            const ctx = document.getElementById('individualChart').getContext('2d');
+            
+            const individualData = gapData.individualData;
+            if (!individualData) {
+                console.error('No individual chart data available');
+                return;
+            }
 
-           const labels = individualData.time_labels || [];
-           const prices = individualData.price_values || [];
-           
-           // Create reference lines
-           const openLine = new Array(labels.length).fill(individualData.open);
-           const highLine = new Array(labels.length).fill(individualData.high);
-           const lowLine = new Array(labels.length).fill(individualData.low);
+            const labels = individualData.time_labels || [];
+            const prices = individualData.price_values || [];
+            
+            // Create reference lines
+            const openLine = new Array(labels.length).fill(individualData.open);
+            const highLine = new Array(labels.length).fill(individualData.high);
+            const lowLine = new Array(labels.length).fill(individualData.low);
 
-           chartInstances.individualChart = new Chart(ctx, {
-               type: 'line',
-               data: {
-                   labels: labels,
-                   datasets: [
-                       {
-                           label: 'High',
-                           data: highLine,
-                           borderColor: '#48bb78',
-                           backgroundColor: 'transparent',
-                           borderWidth: 2,
-                           borderDash: [5, 5],
-                           pointRadius: 0,
-                           tension: 0
-                       },
-                       {
-                           label: 'Price',
-                           data: prices,
-                           borderColor: '#4299e1',
-                           backgroundColor: 'rgba(66, 153, 225, 0.1)',
-                           borderWidth: 3,
-                           fill: false,
-                           pointRadius: 1,
-                           pointHoverRadius: 4,
-                           tension: 0.2
-                       },
-                       {
-                           label: 'Open',
-                           data: openLine,
-                           borderColor: '#fbbf24',
-                           backgroundColor: 'transparent',
-                           borderWidth: 2,
-                           borderDash: [3, 3],
-                           pointRadius: 0,
-                           tension: 0
-                       },
-                       {
-                           label: 'Low',
-                           data: lowLine,
-                           borderColor: '#f56565',
-                           backgroundColor: 'transparent',
-                           borderWidth: 2,
-                           borderDash: [5, 5],
-                           pointRadius: 0,
-                           tension: 0
-                       }
-                   ]
-               },
-               options: {
-                   responsive: true,
-                   maintainAspectRatio: false,
-                   interaction: {
-                       intersect: false,
-                       mode: 'index'
-                   },
-                   plugins: {
-                       legend: {
-                           display: true,
-                           labels: {
-                               color: '#8b8fa3',
-                               usePointStyle: true
-                           }
-                       },
-                       tooltip: {
-                           enabled: true,
-                           backgroundColor: 'rgba(37, 40, 54, 0.95)',
-                           titleColor: '#ffffff',
-                           bodyColor: '#8b8fa3',
-                           borderColor: '#4299e1',
-                           borderWidth: 1,
-                           callbacks: {
-                               title: function(context) {
-                                   return `${gapData.ticker} - ${context[0].label}`;
-                               },
-                               label: function(context) {
-                                   return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
-                               }
-                           }
-                       }
-                   },
-                   scales: {
-                       x: {
-                           display: true,
-                           grid: {
-                               color: 'rgba(139, 143, 163, 0.1)'
-                           },
-                           ticks: {
-                               color: '#8b8fa3',
-                               maxTicksLimit: 8
-                           }
-                       },
-                       y: {
-                           display: true,
-                           grid: {
-                               color: 'rgba(139, 143, 163, 0.1)'
-                           },
-                           ticks: {
-                               color: '#8b8fa3',
-                               callback: function(value) {
-                                   return '$' + value.toFixed(2);
-                               }
-                           }
-                       }
-                   }
-               }
-           });
-       }
+            chartInstances.individualChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'High',
+                            data: highLine,
+                            borderColor: '#48bb78',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            tension: 0
+                        },
+                        {
+                            label: 'Price',
+                            data: prices,
+                            borderColor: '#4299e1',
+                            backgroundColor: 'rgba(66, 153, 225, 0.1)',
+                            borderWidth: 3,
+                            fill: false,
+                            pointRadius: 1,
+                            pointHoverRadius: 4,
+                            tension: 0.2
+                        },
+                        {
+                            label: 'Open',
+                            data: openLine,
+                            borderColor: '#fbbf24',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [3, 3],
+                            pointRadius: 0,
+                            tension: 0
+                        },
+                        {
+                            label: 'Low',
+                            data: lowLine,
+                            borderColor: '#f56565',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            tension: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: '#8b8fa3',
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(37, 40, 54, 0.95)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#8b8fa3',
+                            borderColor: '#4299e1',
+                            borderWidth: 1,
+                            callbacks: {
+                                title: function(context) {
+                                    return `${gapData.ticker} - ${context[0].label}`;
+                                },
+                                label: function(context) {
+                                    return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            grid: {
+                                color: 'rgba(139, 143, 163, 0.1)'
+                            },
+                            ticks: {
+                                color: '#8b8fa3',
+                                maxTicksLimit: 8
+                            }
+                        },
+                        y: {
+                            display: true,
+                            grid: {
+                                color: 'rgba(139, 143, 163, 0.1)'
+                            },
+                            ticks: {
+                                color: '#8b8fa3',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
 
-       function closeIndividualChart() {
-           const modal = document.getElementById('chartModal');
-           modal.style.display = 'none';
-           
-           if (chartInstances.individualChart && typeof chartInstances.individualChart.destroy === 'function') {
-               chartInstances.individualChart.destroy();
-           }
-       }
+        function closeIndividualChart() {
+            const modal = document.getElementById('chartModal');
+            modal.style.display = 'none';
+            
+            if (chartInstances.individualChart && typeof chartInstances.individualChart.destroy === 'function') {
+                chartInstances.individualChart.destroy();
+            }
+        }
 
-       function formatDate(dateStr) {
-           const date = new Date(dateStr);
-           return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-       }
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
 
-       function generateDemoData() {
-           // Generate demo data matching the expected structure
-           const monthlyAverages = {};
-           const weeklyAverages = {};
-           const dailyAverages = {};
-           const monthlyStats = [];
-           const weeklyStats = [];
-           const dailyStats = [];
-           const lastGaps = [];
-           
-           const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-           const now = new Date();
-           
-           // Generate last 12 months of data
-           for (let i = 11; i >= 0; i--) {
-               const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-               const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-               const monthName = monthNames[date.getMonth()];
-               
-               // Generate time series for average chart
-               const timeLabels = [];
-               const avgPrices = [];
-               
-               for (let j = 0; j < 26; j++) {
-                   const hour = 9 + Math.floor(j * 0.25);
-                   const minute = 30 + ((j * 15) % 60);
-                   timeLabels.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
-                   
-                   const progress = j / 25;
-                   const baseChange = (Math.random() - 0.5) * 20;
-                   const volatility = Math.sin(progress * Math.PI) * 5;
-                   
-                   avgPrices.push(baseChange + (Math.random() - 0.5) * volatility);
-               }
-               
-               const gapperCount = Math.floor(Math.random() * 50) + 20;
-               const avgOTC = (Math.random() - 0.5) * 20;
-               const totalVolume = Math.floor(Math.random() * 100000000) + 50000000;
-               const totalDollarVolume = Math.floor(Math.random() * 500000000) + 100000000;
-               
-               monthlyAverages[monthKey] = {
-                   month: monthName,
-                   year: date.getFullYear(),
-                   month_key: monthKey,
-                   period_name: `${monthName} ${date.getFullYear()}`,
-                   gapper_count: gapperCount,
-                   avg_gap_percentage: Math.random() * 100 + 50,
-                   avg_open_to_close: avgOTC,
-                   total_volume: totalVolume,
-                   total_dollar_volume: totalDollarVolume,
-                   avg_high_of_day: Math.max(...avgPrices) + 5,
-                   avg_low_of_day: Math.min(...avgPrices) - 5,
+        function generateDemoData() {
+            // Generate demo data matching the expected structure
+            const monthlyAverages = {};
+            const weeklyAverages = {};
+            const dailyAverages = {};
+            const monthlyStats = [];
+            const weeklyStats = [];
+            const dailyStats = [];
+            const lastGaps = [];
+            
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const now = new Date();
+            
+            // Generate last 12 months of data
+            for (let i = 11; i >= 0; i--) {
+                const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                const monthName = monthNames[date.getMonth()];
+                
+                // Generate time series for average chart
+                const timeLabels = [];
+                const avgPrices = [];
+                
+                for (let j = 0; j < 26; j++) {
+                    const hour = 9 + Math.floor(j * 0.25);
+                    const minute = 30 + ((j * 15) % 60);
+                    timeLabels.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+                    
+                    const progress = j / 25;
+                    const baseChange = (Math.random() - 0.5) * 20;
+                    const volatility = Math.sin(progress * Math.PI) * 5;
+                    
+                    avgPrices.push(baseChange + (Math.random() - 0.5) * volatility);
+                }
+                
+                const gapperCount = Math.floor(Math.random() * 50) + 20;
+                const avgOTC = (Math.random() - 0.5) * 20;
+                const totalVolume = Math.floor(Math.random() * 100000000) + 50000000;
+                const totalDollarVolume = Math.floor(Math.random() * 500000000) + 100000000;
+                
+                monthlyAverages[monthKey] = {
+                    month: monthName,
+                    year: date.getFullYear(),
+                    month_key: monthKey,
+                    period_name: `${monthName} ${date.getFullYear()}`,
+                    gapper_count: gapperCount,
+                    avg_gap_percentage: Math.random() * 100 + 50,
+                    avg_open_to_close: avgOTC,
+                    total_volume: totalVolume,
+                    total_dollar_volume: totalDollarVolume,
+                    avg_high_of_day_pct: Math.max(...avgPrices) + 5,
+                   avg_low_of_day_pct: Math.min(...avgPrices) - 5,
+                   avg_hod_time: 0.3 + Math.random() * 0.4, // Between 30-70% of trading day
+                   avg_hod_time_str: '11:45', // Sample HOD time
                    time_labels: timeLabels,
                    avg_prices: avgPrices,
                    open_line: new Array(timeLabels.length).fill(0)
@@ -1483,8 +1497,10 @@
                    avg_open_to_close: weeklyOTC,
                    total_volume: weeklyVolume,
                    total_dollar_volume: weeklyDollarVolume,
-                   avg_high_of_day: Math.max(...weeklyAvgPrices) + 3,
-                   avg_low_of_day: Math.min(...weeklyAvgPrices) - 3,
+                   avg_high_of_day_pct: Math.max(...weeklyAvgPrices) + 3,
+                   avg_low_of_day_pct: Math.min(...weeklyAvgPrices) - 3,
+                   avg_hod_time: 0.25 + Math.random() * 0.5,
+                   avg_hod_time_str: '12:15',
                    time_labels: weeklyTimeLabels,
                    avg_prices: weeklyAvgPrices
                };
@@ -1528,8 +1544,10 @@
                    avg_open_to_close: dailyOTC,
                    total_volume: dailyVolume,
                    total_dollar_volume: dailyDollarVolume,
-                   avg_high_of_day: Math.max(...dailyAvgPrices) + 2,
-                   avg_low_of_day: Math.min(...dailyAvgPrices) - 2,
+                   avg_high_of_day_pct: Math.max(...dailyAvgPrices) + 2,
+                   avg_low_of_day_pct: Math.min(...dailyAvgPrices) - 2,
+                   avg_hod_time: 0.2 + Math.random() * 0.6,
+                   avg_hod_time_str: '10:30',
                    time_labels: dailyTimeLabels,
                    avg_prices: dailyAvgPrices
                };
@@ -1683,4 +1701,3 @@
    </script>
 </body>
 </html>
-                                                               
