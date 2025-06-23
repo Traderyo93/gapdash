@@ -271,7 +271,8 @@ class GapDataUpdater:
         except Exception as e:
             print(f"Error processing intraday data for {ticker}: {e}")
             return None
-            def fetch_candidates_for_date(self, date):
+            
+    def fetch_candidates_for_date(self, date):
         """Find and process gappers for a specific date"""
         try:
             date_str = date.strftime('%Y-%m-%d')
