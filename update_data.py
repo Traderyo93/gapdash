@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Gap Scanner Data Updater - Complete Dashboard with D/W/M Support
-Calculates monthly, weekly, and daily averages AND individual gapper data
+Gap Scanner Data Updater - Complete Dashboard with Proper HOD Timing
+Calculates monthly, weekly, and daily averages with correct market hours and HOD timing
 """
 
 import os
@@ -88,7 +88,7 @@ class GapDataUpdater:
             return None
 
     def process_gapper_intraday(self, intraday_data, ticker, date_str, prev_close, gap_percentage):
-        """Process individual gapper's intraday data"""
+        """Process individual gapper's intraday data with proper market hours"""
         try:
             df = pd.DataFrame(intraday_data)
             if df.empty:
@@ -105,7 +105,7 @@ class GapDataUpdater:
             pre_market = df[df['t'].dt.time < time(9, 30)]
             pre_market_volume = pre_market['v'].sum() if not pre_market.empty else 0
             
-            # Filter to market hours ONLY (9:30 AM - 4:00 PM) - NO PRE-MARKET
+            # Filter to MARKET HOURS ONLY (9:30 AM - 4:00 PM EST) - NO PRE-MARKET
             market_hours = df[
                 (df['t'].dt.time >= time(9, 30)) & 
                 (df['t'].dt.time <= time(16, 0))
@@ -119,6 +119,17 @@ class GapDataUpdater:
             day_high = market_hours['h'].max()  # HOD from 9:30-4:00 ONLY
             day_low = market_hours['l'].min()   # LOD from 9:30-4:00 ONLY
             day_close = market_hours['c'].iloc[-1]
+            
+            # Find WHEN the HOD occurred during market hours
+            hod_row = market_hours[market_hours['h'] == day_high].iloc[0]
+            hod_time = hod_row['t']
+            
+            # Calculate HOD time as percentage of trading day (0 = 9:30, 1 = 4:00)
+            market_start = hod_time.replace(hour=9, minute=30, second=0, microsecond=0)
+            market_end = hod_time.replace(hour=16, minute=0, second=0, microsecond=0)
+            total_market_seconds = (market_end - market_start).total_seconds()
+            hod_seconds_from_start = (hod_time - market_start).total_seconds()
+            hod_time_percentage = hod_seconds_from_start / total_market_seconds
             
             # Validate gap percentage vs actual opening
             actual_gap = ((day_open - prev_close) / prev_close) * 100
@@ -138,14 +149,16 @@ class GapDataUpdater:
             if resampled.empty:
                 return None
             
-            # Create normalized time series (0-100% of trading day)
+            # Create normalized time series (0-1 representing trading day)
             times_normalized = []
             prices_normalized = []
             highs_normalized = []
             lows_normalized = []
             
             for i, (timestamp, row) in enumerate(resampled.iterrows()):
-                progress = i / (len(resampled) - 1) if len(resampled) > 1 else 0
+                # Calculate progress through trading day
+                seconds_from_930 = (timestamp.replace(tzinfo=eastern) - market_start).total_seconds()
+                progress = max(0, min(1, seconds_from_930 / total_market_seconds))
                 times_normalized.append(progress)
                 
                 # Normalize prices as percentage change from open
@@ -167,7 +180,7 @@ class GapDataUpdater:
             return {
                 'ticker': ticker,
                 'date': date_str,
-                'gap_percentage': float(actual_gap),  # Use actual gap, not initial
+                'gap_percentage': float(actual_gap),
                 'previous_close': float(prev_close),
                 'open': float(day_open),
                 'high': float(day_high),
@@ -176,6 +189,8 @@ class GapDataUpdater:
                 'open_to_close_change': float(open_to_close_change),
                 'high_of_day_pct': float(high_of_day_pct),
                 'low_of_day_pct': float(low_of_day_pct),
+                'hod_time_percentage': float(hod_time_percentage),  # When HOD occurred (0-1)
+                'hod_time_str': hod_time.strftime('%H:%M'),        # When HOD occurred (HH:MM)
                 'total_volume': total_volume,
                 'dollar_volume': int(dollar_volume),
                 'pre_market_volume': int(pre_market_volume),
@@ -266,7 +281,7 @@ class GapDataUpdater:
                     )
                     
                     if gapper_data:
-                        print(f"  ✓ Qualified: {ticker} - Gap: {gapper_data['gap_percentage']:.1f}%, O-to-C: {gapper_data['open_to_close_change']:.1f}%")
+                        print(f"  ✓ Qualified: {ticker} - Gap: {gapper_data['gap_percentage']:.1f}%, O-to-C: {gapper_data['open_to_close_change']:.1f}%, HOD: {gapper_data['hod_time_str']}")
                         qualified_gappers.append(gapper_data)
                     else:
                         print(f"  ✗ Failed qualification: {ticker}")
@@ -284,11 +299,12 @@ class GapDataUpdater:
             return []
     
     def calculate_period_average(self, gappers, period_name):
-        """Calculate average pattern for a period (month/week/day)"""
+        """Calculate average pattern for a period with proper HOD timing"""
         if not gappers:
             return None
             
-        # Create standardized time points (0 to 1, representing trading day)
+        # Create standardized time points for market hours ONLY (9:30-4:00 PM)
+        market_minutes = 6.5 * 60  # 390 minutes
         time_points = np.linspace(0, 1, 26)  # 26 points for 15-min intervals
         
         all_price_curves = []
@@ -299,8 +315,9 @@ class GapDataUpdater:
         total_dollar_volume = 0
         total_gap = 0
         total_otc = 0
-        high_of_days = []
-        low_of_days = []
+        high_of_day_percentages = []
+        high_of_day_times = []  # Track WHEN HOD occurs (0-1 scale)
+        low_of_day_percentages = []
         
         for gapper in gappers:
             if len(gapper['times_normalized']) > 1:
@@ -312,14 +329,17 @@ class GapDataUpdater:
                 all_price_curves.append(price_interp)
                 all_high_curves.append(high_interp)
                 all_low_curves.append(low_interp)
+                
+                # Track HOD timing
+                high_of_day_times.append(gapper['hod_time_percentage'])
             
             # Accumulate totals
             total_volume += gapper['total_volume']
             total_dollar_volume += gapper['dollar_volume']
             total_gap += gapper['gap_percentage']
             total_otc += gapper['open_to_close_change']
-            high_of_days.append(gapper['high_of_day_pct'])
-            low_of_days.append(gapper['low_of_day_pct'])
+            high_of_day_percentages.append(gapper['high_of_day_pct'])
+            low_of_day_percentages.append(gapper['low_of_day_pct'])
         
         if not all_price_curves:
             return None
@@ -329,15 +349,26 @@ class GapDataUpdater:
         avg_highs = np.mean(all_high_curves, axis=0)
         avg_lows = np.mean(all_low_curves, axis=0)
         
-        # Calculate static HOD and LOD (average across all gappers)
-        avg_high_of_day = np.mean(high_of_days)
-        avg_low_of_day = np.mean(low_of_days)
+        # Calculate average HOD percentage and timing
+        avg_high_of_day_pct = np.mean(high_of_day_percentages)  # Average % gain to HOD
+        avg_low_of_day_pct = np.mean(low_of_day_percentages)    # Average % loss to LOD
+        avg_hod_time = np.mean(high_of_day_times)               # Average time HOD occurs (0-1)
         
-        # Create time labels
+        # Convert average HOD time back to actual time
+        hod_minutes_from_930 = avg_hod_time * market_minutes
+        hod_hour = 9 + int(hod_minutes_from_930 // 60)
+        hod_minute = 30 + int(hod_minutes_from_930 % 60)
+        if hod_minute >= 60:
+            hod_hour += 1
+            hod_minute -= 60
+        avg_hod_time_str = f"{hod_hour:02d}:{hod_minute:02d}"
+        
+        # Create time labels for market hours (9:30 AM - 4:00 PM)
         time_labels = []
         for i, t in enumerate(time_points):
-            hour = 9 + int(t * 6.5)  # 6.5 hours of trading
-            minute = 30 + int((t * 6.5 * 60) % 60)
+            minutes_from_930 = t * market_minutes
+            hour = 9 + int(minutes_from_930 // 60)
+            minute = 30 + int(minutes_from_930 % 60)
             if minute >= 60:
                 hour += 1
                 minute -= 60
@@ -352,10 +383,12 @@ class GapDataUpdater:
             'avg_open_to_close': round(total_otc / gapper_count, 2),
             'total_volume': total_volume,
             'total_dollar_volume': total_dollar_volume,
-            'avg_high_of_day': round(avg_high_of_day, 2),  # Static HOD line
-            'avg_low_of_day': round(avg_low_of_day, 2),    # Static LOD line
+            'avg_high_of_day_pct': round(avg_high_of_day_pct, 2),     # HOD as % from open (GREEN LINE)
+            'avg_low_of_day_pct': round(avg_low_of_day_pct, 2),       # LOD as % from open (RED LINE)
+            'avg_hod_time': avg_hod_time,                             # HOD time as 0-1 (YELLOW LINE position)
+            'avg_hod_time_str': avg_hod_time_str,                     # HOD time as "HH:MM"
             'time_labels': time_labels,
-            'avg_prices': [round(p, 2) for p in avg_prices],
+            'avg_prices': [round(p, 2) for p in avg_prices],          # BLUE LINE (price action)
             'avg_highs': [round(h, 2) for h in avg_highs],
             'avg_lows': [round(l, 2) for l in avg_lows],
             'open_line': [0.0] * len(time_labels)  # Reference line at 0%
@@ -607,17 +640,22 @@ class GapDataUpdater:
         print(f"📅 Daily averages: {len(daily_averages)}")
         print(f"🗓️ Days since last gap: {calendar_data['days_since_last_gap']}")
         
+        # Sample HOD timing info
+        if monthly_averages:
+            sample_month = list(monthly_averages.values())[0]
+            print(f"📈 Sample HOD timing: {sample_month.get('avg_hod_time_str', 'N/A')} ({sample_month.get('avg_high_of_day_pct', 0):.1f}% avg gain)")
+        
         # Verify file was created
         if os.path.exists(self.cache_file):
             file_size = os.path.getsize(self.cache_file)
-            print(f"✓ Cache file created successfully: {file_size:,} bytes")
-        else:
-            print("❌ ERROR: Cache file was not created!")
+           print(f"✓ Cache file created successfully: {file_size:,} bytes")
+       else:
+           print("❌ ERROR: Cache file was not created!")
 
 def main():
-    """Main entry point"""
-    updater = GapDataUpdater()
-    updater.daily_update()
+   """Main entry point"""
+   updater = GapDataUpdater()
+   updater.daily_update()
 
 if __name__ == "__main__":
-    main()
+   main()
