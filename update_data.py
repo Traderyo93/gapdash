@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Gap Scanner Data Updater - New Dashboard Format
-Updates gap scanner data with monthly/weekly aggregations
+Gap Scanner Data Updater - Intraday Charts Format
+Collects detailed 15-minute intraday data for dashboard charts
 """
 
 import os
@@ -43,7 +43,7 @@ class GapDataUpdater:
         return True
     
     def get_previous_trading_day(self, date):
-        """Exact same logic as your backtest"""
+        """Get previous trading day"""
         eastern = pytz.timezone('US/Eastern')
         if date.tzinfo is None:
             date = eastern.localize(date)
@@ -69,8 +69,8 @@ class GapDataUpdater:
         
         return None
     
-    def fetch_intraday_data(self, ticker, date_str):
-        """Fetch minute-by-minute data for 9:28 candle logic"""
+    def fetch_detailed_intraday_data(self, ticker, date_str):
+        """Fetch detailed minute-by-minute data for full day chart"""
         try:
             url = f"{self.polygon_base_url}/aggs/ticker/{ticker}/range/1/minute/{date_str}/{date_str}?adjusted=false&sort=asc&limit=50000&apiKey={self.api_key}"
             response = requests.get(url)
@@ -83,14 +83,88 @@ class GapDataUpdater:
             return None
                 
         except Exception as e:
-            print(f"Error fetching intraday data for {ticker}: {e}")
+            print(f"Error fetching detailed intraday data for {ticker}: {e}")
+            return None
+
+    def process_intraday_for_chart(self, intraday_data, ticker, date_str, open_price, gap_percentage):
+        """Process minute data into 15-minute chart format"""
+        try:
+            df = pd.DataFrame(intraday_data)
+            if df.empty:
+                return None
+                
+            eastern = pytz.timezone('US/Eastern')
+            df['t'] = pd.to_datetime(df['t'], unit='ms')
+            if df['t'].dt.tz is None:
+                df['t'] = df['t'].dt.tz_localize('UTC').dt.tz_convert(eastern)
+            elif df['t'].dt.tz != eastern:
+                df['t'] = df['t'].dt.tz_convert(eastern)
+            
+            # Filter to market hours (9:30 AM - 4:00 PM)
+            market_hours = df[
+                (df['t'].dt.time >= time(9, 30)) & 
+                (df['t'].dt.time <= time(16, 0))
+            ].copy()
+            
+            if market_hours.empty:
+                return None
+            
+            # Resample to 15-minute intervals
+            market_hours.set_index('t', inplace=True)
+            resampled = market_hours.resample('15T').agg({
+                'o': 'first',
+                'h': 'max', 
+                'l': 'min',
+                'c': 'last',
+                'v': 'sum'
+            }).dropna()
+            
+            if resampled.empty:
+                return None
+            
+            # Get day's high and low
+            day_high = market_hours['h'].max()
+            day_low = market_hours['l'].min()
+            day_open = market_hours['o'].iloc[0]
+            day_close = market_hours['c'].iloc[-1]
+            
+            # Calculate open to close change
+            open_to_close_change = ((day_close - day_open) / day_open) * 100
+            
+            # Create time series data
+            times = []
+            prices = []
+            volumes = []
+            
+            for timestamp, row in resampled.iterrows():
+                times.append(timestamp.strftime('%H:%M'))
+                prices.append(float(row['c']))
+                volumes.append(int(row['v']))
+            
+            return {
+                'ticker': ticker,
+                'date': date_str,
+                'gap_percentage': float(gap_percentage),
+                'times': times,
+                'prices': prices,
+                'volumes': volumes,
+                'open': float(day_open),
+                'high': float(day_high), 
+                'low': float(day_low),
+                'close': float(day_close),
+                'open_to_close_change': float(open_to_close_change),
+                'total_volume': int(market_hours['v'].sum())
+            }
+            
+        except Exception as e:
+            print(f"Error processing intraday data for {ticker}: {e}")
             return None
 
     def fetch_candidates_for_date(self, date):
-        """EXACT same logic as your consolidated backtest"""
+        """Find gappers and get their detailed intraday data"""
         try:
             date_str = date.strftime('%Y-%m-%d')
-            print(f"\n=== Fetching candidates for {date_str} ===")
+            print(f"\n=== Processing {date_str} ===")
             
             eastern = pytz.timezone('US/Eastern')
             if date.tzinfo is None:
@@ -102,29 +176,24 @@ class GapDataUpdater:
                 return []
                 
             prev_date_str = previous_day.strftime('%Y-%m-%d')
-            print(f"Previous trading day: {prev_date_str}")
             
             # Get previous day's closing prices
-            print(f"Fetching previous day closes from {prev_date_str}...")
             prev_close_url = f"{self.polygon_base_url}/aggs/grouped/locale/us/market/stocks/{prev_date_str}?adjusted=false&type=CS,PS,ADR&apiKey={self.api_key}"
             prev_close_response = requests.get(prev_close_url)
             prev_close_response.raise_for_status()
             prev_close_data = prev_close_response.json()
             
             prev_closes = {stock['T']: stock['c'] for stock in prev_close_data.get('results', [])}
-            print(f"Got {len(prev_closes)} previous close prices")
-            initial_candidates = []
             
             # Get current date data
-            print(f"Fetching current day data from {date_str}...")
             current_url = f"{self.polygon_base_url}/aggs/grouped/locale/us/market/stocks/{date_str}?adjusted=false&type=CS,PS,ADR&apiKey={self.api_key}"
             current_response = requests.get(current_url)
             current_response.raise_for_status()
             current_data = current_response.json()
             
-            print(f"Got {len(current_data.get('results', []))} stocks for current day")
+            initial_candidates = []
             
-            # First screening using daily data
+            # Find initial gap candidates
             if 'results' in current_data:
                 for stock in current_data['results']:
                     ticker = stock['T']
@@ -137,120 +206,67 @@ class GapDataUpdater:
                         prev_close = prev_closes[ticker]
                         initial_gap = ((opening - prev_close) / prev_close) * 100
                         
-                        needs_split_check = initial_gap >= 500
-                        
                         if initial_gap >= 45 and opening >= 0.30:
                             initial_candidates.append({
                                 'ticker': ticker,
                                 'previous_close': prev_close,
                                 'initial_gap': initial_gap,
-                                'opening': opening,
-                                'needs_split_check': needs_split_check
+                                'opening': opening
                             })
             
-            print(f"Found {len(initial_candidates)} initial candidates")
+            print(f"Found {len(initial_candidates)} potential gappers")
             
-            # Process intraday data for all initial candidates
-            final_candidates = []
+            # Process each candidate for detailed charts
+            detailed_gappers = []
             for i, candidate in enumerate(initial_candidates):
                 ticker = candidate['ticker']
-                print(f"Processing {i+1}/{len(initial_candidates)}: {ticker} (initial gap: {candidate['initial_gap']:.1f}%)")
+                print(f"Processing {i+1}/{len(initial_candidates)}: {ticker}")
                 
-                intraday_data = self.fetch_intraday_data(ticker, date_str)
-                if intraday_data is not None:
+                # Get detailed intraday data
+                intraday_data = self.fetch_detailed_intraday_data(ticker, date_str)
+                if intraday_data:
+                    # Check volume and final criteria
                     df = pd.DataFrame(intraday_data)
                     if not df.empty:
                         df['t'] = pd.to_datetime(df['t'], unit='ms')
-                        if df['t'].dt.tz is None:
-                            df['t'] = df['t'].dt.tz_localize('UTC').dt.tz_convert(eastern)
-                        elif df['t'].dt.tz != eastern:
-                            df['t'] = df['t'].dt.tz_convert(eastern)
+                        df['t'] = df['t'].dt.tz_localize('UTC').dt.tz_convert(eastern)
                         
-                        # Get 9:28 candle with fallback (EXACT same logic)
-                        candle_928 = df[df['t'].dt.time == time(9, 28)]
+                        # Check pre-market volume
+                        pre_market = df[df['t'].dt.time < time(9, 30)]
+                        pre_market_volume = pre_market['v'].sum() if not pre_market.empty else 0
                         
-                        if candle_928.empty:
-                            candle_929 = df[df['t'].dt.time == time(9, 29)]
-                            if not candle_929.empty:
-                                candle_928 = candle_929
+                        if pre_market_volume >= 1000000:
+                            # Process for chart
+                            chart_data = self.process_intraday_for_chart(
+                                intraday_data, 
+                                ticker, 
+                                date_str, 
+                                candidate['opening'],
+                                candidate['initial_gap']
+                            )
+                            
+                            if chart_data:
+                                print(f"  ✓ Added {ticker} with {len(chart_data['times'])} data points")
+                                detailed_gappers.append(chart_data)
                             else:
-                                candle_927 = df[df['t'].dt.time == time(9, 27)]
-                                if not candle_927.empty:
-                                    candle_928 = candle_927
-                        
-                        if not candle_928.empty:
-                            price_928 = candle_928.iloc[0]['c']
-                            gap_928 = ((price_928 - candidate['previous_close']) / candidate['previous_close']) * 100
-                            
-                            print(f"  9:28 price: ${price_928:.4f}, Gap: {gap_928:.1f}%")
-                            
-                            # Check for split if suspicious gap (EXACT same logic)
-                            if candidate['needs_split_check'] or gap_928 > 500:
-                                is_split = False
-                                try:
-                                    url = f"https://api.polygon.io/v3/reference/splits?ticker={ticker}&execution_date.gte={prev_date_str}&execution_date.lte={date_str}&apiKey={self.api_key}"
-                                    response = requests.get(url)
-                                    if response.status_code == 200:
-                                        data = response.json()
-                                        is_split = 'results' in data and len(data['results']) > 0
-                                        if is_split:
-                                            print(f"  -> SPLIT DETECTED for {ticker}, skipping")
-                                except Exception:
-                                    pass
-                                
-                                if is_split:
-                                    continue
-                            
-                            # Check criteria (EXACT same as your backtest)
-                            if gap_928 >= 50 and price_928 >= 0.30:
-                                pre_market_data = df[df['t'].dt.time < time(9, 30)]
-                                pre_market_volume = pre_market_data['v'].sum() if not pre_market_data.empty else 0
-                                
-                                print(f"  Pre-market volume: {pre_market_volume:,}")
-                                
-                                if pre_market_volume >= 1000000:
-                                    print(f"  -> ✓ QUALIFIED GAPPER: {ticker} - {gap_928:.1f}%")
-                                    
-                                    # Get day's OHLC from daily data
-                                    day_data = current_data.get('results', [])
-                                    daily_ohlc = next((s for s in day_data if s['T'] == ticker), {})
-                                    
-                                    final_candidates.append({
-                                        'ticker': ticker,
-                                        'gap_percentage': float(gap_928),
-                                        'volume': int(pre_market_volume),
-                                        'price': float(price_928),
-                                        'previous_close': float(candidate['previous_close']),
-                                        'gap_928': float(gap_928),
-                                        'price_928': float(price_928),
-                                        'date': date_str,
-                                        'open': float(daily_ohlc.get('o', price_928)),
-                                        'high': float(daily_ohlc.get('h', price_928)),
-                                        'low': float(daily_ohlc.get('l', price_928)),
-                                        'close': float(daily_ohlc.get('c', price_928)),
-                                        'dollar_volume': int(pre_market_volume) * float(price_928)
-                                    })
-                                else:
-                                    print(f"  -> Volume too low: {pre_market_volume:,}")
-                            else:
-                                print(f"  -> Gap/price criteria not met: {gap_928:.1f}% gap, ${price_928:.4f} price")
+                                print(f"  ✗ Failed to process chart data for {ticker}")
                         else:
-                            print(f"  -> No 9:28 candle found for {ticker}")
+                            print(f"  ✗ {ticker} insufficient volume: {pre_market_volume:,}")
                 
-                # Rate limiting for premium API
+                # Rate limiting
                 time_module.sleep(0.12)
             
-            print(f"\nFinal result: {len(final_candidates)} qualified gappers")
-            return final_candidates
+            print(f"Final result: {len(detailed_gappers)} detailed gappers")
+            return detailed_gappers
             
         except Exception as e:
-            print(f"Error fetching candidates: {str(e)}")
+            print(f"Error processing date {date_str}: {str(e)}")
             import traceback
             traceback.print_exc()
             return []
     
-    def get_trading_days(self, days=500):
-        """Get recent trading days (2+ years for proper aggregation)"""
+    def get_trading_days(self, days=90):
+        """Get recent trading days (3 months for detailed charts)"""
         trading_days = []
         current_date = datetime.now(self.eastern)
         
@@ -261,131 +277,70 @@ class GapDataUpdater:
         
         return list(reversed(trading_days))
     
-    def calculate_monthly_aggregations(self, all_gappers):
-        """Calculate monthly aggregated statistics for dashboard"""
-        monthly_stats = defaultdict(lambda: {
-            'gappers': [],
-            'total_volume': 0,
-            'total_dollar_volume': 0,
-            'open_to_close_changes': []
-        })
+    def organize_by_time_periods(self, all_gappers):
+        """Organize gappers by different time periods for D/W/M toggles"""
+        daily_data = defaultdict(list)
+        weekly_data = defaultdict(list) 
+        monthly_data = defaultdict(list)
         
-        # Group by month
         for gapper in all_gappers:
             date = datetime.strptime(gapper['date'], '%Y-%m-%d')
-            month_key = f"{date.year}-{date.month:02d}"
             
-            monthly_stats[month_key]['gappers'].append(gapper)
-            monthly_stats[month_key]['total_volume'] += gapper.get('volume', 0)
-            monthly_stats[month_key]['total_dollar_volume'] += gapper.get('dollar_volume', 0)
+            # Daily organization (by date)
+            daily_key = gapper['date']
+            daily_data[daily_key].append(gapper)
             
-            # Calculate open to close change
-            if gapper.get('open') and gapper.get('close'):
-                otc_change = ((gapper['close'] - gapper['open']) / gapper['open']) * 100
-                monthly_stats[month_key]['open_to_close_changes'].append(otc_change)
-        
-        # Convert to final format (last 24 months)
-        result = []
-        now = datetime.now()
-        month_names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-        
-        for i in range(23, -1, -1):  # Last 24 months
-            target_date = datetime(now.year, now.month, 1) - timedelta(days=32*i)
-            target_date = target_date.replace(day=1)
-            month_key = f"{target_date.year}-{target_date.month:02d}"
-            
-            stats = monthly_stats.get(month_key, {
-                'gappers': [],
-                'total_volume': 0,
-                'total_dollar_volume': 0,
-                'open_to_close_changes': []
-            })
-            
-            avg_otc = 0
-            if stats['open_to_close_changes']:
-                avg_otc = sum(stats['open_to_close_changes']) / len(stats['open_to_close_changes'])
-            
-            result.append({
-                'month': month_names[target_date.month - 1],
-                'year': target_date.year,
-                'month_key': month_key,
-                'gapper_count': len(stats['gappers']),
-                'total_volume': stats['total_volume'],
-                'total_dollar_volume': stats['total_dollar_volume'],
-                'avg_open_to_close': round(avg_otc, 2)
-            })
-        
-        return result
-    
-    def calculate_weekly_aggregations(self, all_gappers):
-        """Calculate weekly aggregated statistics"""
-        weekly_stats = defaultdict(lambda: {
-            'gappers': [],
-            'open_to_close_changes': []
-        })
-        
-        # Group by week
-        for gapper in all_gappers:
-            date = datetime.strptime(gapper['date'], '%Y-%m-%d')
+            # Weekly organization
             year, week, _ = date.isocalendar()
-            week_key = f"{year}-W{week:02d}"
+            weekly_key = f"{year}-W{week:02d}"
+            weekly_data[weekly_key].append(gapper)
             
-            weekly_stats[week_key]['gappers'].append(gapper)
-            
-            if gapper.get('open') and gapper.get('close'):
-                otc_change = ((gapper['close'] - gapper['open']) / gapper['open']) * 100
-                weekly_stats[week_key]['open_to_close_changes'].append(otc_change)
-        
-        # Convert to final format (last 12 weeks)
-        result = []
-        now = datetime.now()
-        
-        for i in range(11, -1, -1):  # Last 12 weeks
-            target_date = now - timedelta(weeks=i)
-            year, week, _ = target_date.isocalendar()
-            week_key = f"{year}-W{week:02d}"
-            
-            stats = weekly_stats.get(week_key, {
-                'open_to_close_changes': []
-            })
-            
-            avg_otc = 0
-            if stats['open_to_close_changes']:
-                avg_otc = sum(stats['open_to_close_changes']) / len(stats['open_to_close_changes'])
-            
-            result.append({
-                'week_key': week_key,
-                'avg_open_to_close': round(avg_otc, 2)
-            })
-        
-        return result
-    
-    def calculate_calendar_data(self, all_gappers):
-        """Calculate which days had gaps for calendar view"""
-        gap_dates = set()
-        for gapper in all_gappers:
-            gap_dates.add(gapper['date'])
-        
-        # Calculate days since last gap
-        today = datetime.now().date()
-        days_since_gap = 0
-        
-        current_date = today
-        while current_date.strftime('%Y-%m-%d') not in gap_dates and days_since_gap < 30:
-            if current_date.weekday() < 5:  # Only count trading days
-                days_since_gap += 1
-            current_date -= timedelta(days=1)
+            # Monthly organization
+            monthly_key = f"{date.year}-{date.month:02d}"
+            monthly_data[monthly_key].append(gapper)
         
         return {
-            'gap_dates': list(gap_dates),
-            'days_since_last_gap': days_since_gap
+            'daily': dict(daily_data),
+            'weekly': dict(weekly_data), 
+            'monthly': dict(monthly_data)
+        }
+    
+    def calculate_summary_stats(self, all_gappers):
+        """Calculate summary statistics for dashboard"""
+        if not all_gappers:
+            return {
+                'total_gappers': 0,
+                'avg_gap_percentage': 0,
+                'avg_open_to_close': 0,
+                'total_volume': 0,
+                'days_since_last_gap': 0
+            }
+        
+        # Calculate averages
+        total_gappers = len(all_gappers)
+        avg_gap = sum(g['gap_percentage'] for g in all_gappers) / total_gappers
+        avg_otc = sum(g['open_to_close_change'] for g in all_gappers) / total_gappers
+        total_vol = sum(g['total_volume'] for g in all_gappers)
+        
+        # Days since last gap
+        latest_date = max(g['date'] for g in all_gappers)
+        latest = datetime.strptime(latest_date, '%Y-%m-%d').date()
+        today = datetime.now().date()
+        days_since = (today - latest).days
+        
+        return {
+            'total_gappers': total_gappers,
+            'avg_gap_percentage': round(avg_gap, 2),
+            'avg_open_to_close': round(avg_otc, 2),
+            'total_volume': total_vol,
+            'days_since_last_gap': max(0, days_since)
         }
     
     def daily_update(self):
         """Main update function"""
-        print(f"🚀 Starting Gap Scanner Update at {datetime.now()}")
+        print(f"🚀 Starting Detailed Gap Scanner Update at {datetime.now()}")
         
-        # Test API connection first
+        # Test API connection
         try:
             test_url = "https://api.polygon.io/v1/marketstatus/now"
             test_response = requests.get(test_url, params={'apiKey': self.api_key}, timeout=10)
@@ -395,57 +350,41 @@ class GapDataUpdater:
             print(f"❌ API connection failed: {e}")
             return
         
-        # Get recent trading days (2+ years for proper aggregation)
-        trading_days = self.get_trading_days(500)
+        # Get recent trading days
+        trading_days = self.get_trading_days(90)  # 3 months of data
         print(f"Processing {len(trading_days)} trading days...")
         
         all_gappers = []
         
         # Process each trading day
         for i, date in enumerate(trading_days):
-            print(f"\n{'='*60}")
-            print(f"Day {i+1}/{len(trading_days)}: {date.strftime('%Y-%m-%d')}")
+            print(f"\nDay {i+1}/{len(trading_days)}: {date.strftime('%Y-%m-%d')}")
             
-            candidates = self.fetch_candidates_for_date(date)
-            
-            if candidates:
-                print(f"✓ Found {len(candidates)} gappers on {date.strftime('%Y-%m-%d')}")
-                all_gappers.extend(candidates)
-            else:
-                print(f"No gappers found on {date.strftime('%Y-%m-%d')}")
+            daily_gappers = self.fetch_candidates_for_date(date)
+            if daily_gappers:
+                all_gappers.extend(daily_gappers)
         
-        # Calculate aggregations
-        print(f"\n📊 Calculating aggregations...")
-        monthly_stats = self.calculate_monthly_aggregations(all_gappers)
-        weekly_stats = self.calculate_weekly_aggregations(all_gappers)
-        calendar_data = self.calculate_calendar_data(all_gappers)
+        print(f"\n📊 Processing {len(all_gappers)} total gappers...")
         
-        # Get last gaps (last 5 trading days)
-        all_gappers_sorted = sorted(all_gappers, key=lambda x: x['date'], reverse=True)
-        unique_dates = []
-        seen_dates = set()
-        for gapper in all_gappers_sorted:
-            if gapper['date'] not in seen_dates:
-                unique_dates.append(gapper['date'])
-                seen_dates.add(gapper['date'])
-            if len(unique_dates) >= 5:
-                break
+        # Organize data by time periods
+        time_periods = self.organize_by_time_periods(all_gappers)
+        summary_stats = self.calculate_summary_stats(all_gappers)
         
-        last_5_dates = unique_dates[:5]
-        last_gaps = [g for g in all_gappers_sorted if g['date'] in last_5_dates][:50]
+        # Get last gaps for sidebar
+        recent_gappers = sorted(all_gappers, key=lambda x: x['date'], reverse=True)[:30]
         
-        # Prepare cache data for new dashboard
+        # Prepare cache data for new dashboard format
         cache_data = {
             'lastUpdated': datetime.now().isoformat(),
-            'monthlyStats': monthly_stats,
-            'weeklyStats': weekly_stats,
-            'calendarData': calendar_data,
+            'timePeriodsData': time_periods,
+            'summaryStats': summary_stats,
             'lastGaps': [{
                 'ticker': g['ticker'],
-                'gapPercentage': float(g['gap_percentage']),
-                'volume': int(g['volume']),
-                'date': g['date']
-            } for g in last_gaps],
+                'gapPercentage': g['gap_percentage'],
+                'volume': g['total_volume'],
+                'date': g['date'],
+                'openToCloseChange': g['open_to_close_change']
+            } for g in recent_gappers],
             'totalGappers': len(all_gappers)
         }
         
@@ -455,10 +394,10 @@ class GapDataUpdater:
             
         print(f"\n✅ UPDATE COMPLETE!")
         print(f"📁 Results saved to: {self.cache_file}")
-        print(f"📊 Total gappers found: {len(all_gappers)}")
-        print(f"📈 Monthly data points: {len(monthly_stats)}")
-        print(f"📅 Weekly data points: {len(weekly_stats)}")
-        print(f"🗓️ Days since last gap: {calendar_data['days_since_last_gap']}")
+        print(f"📊 Total gappers processed: {len(all_gappers)}")
+        print(f"📅 Daily periods: {len(time_periods['daily'])}")
+        print(f"📅 Weekly periods: {len(time_periods['weekly'])}")
+        print(f"📅 Monthly periods: {len(time_periods['monthly'])}")
         
         # Verify file was created
         if os.path.exists(self.cache_file):
