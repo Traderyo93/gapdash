@@ -21,10 +21,158 @@
             line-height: 1.4;
         }
 
+        /* Sidebar Styles */
+        .sidebar-nav {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 60px;
+            height: 100vh;
+            background: #252836;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            z-index: 3000;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-item {
+            width: 40px;
+            height: 40px;
+            background: transparent;
+            border: none;
+            color: #8b8fa3;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-size: 18px;
+        }
+
+        .nav-item:hover {
+            background: rgba(66, 153, 225, 0.2);
+            color: #4299e1;
+        }
+
+        .nav-item.active {
+            background: #4299e1;
+            color: white;
+        }
+
+        .nav-spacer {
+            flex: 1;
+        }
+
+        /* Expanded Sidebar */
+        .sidebar-expanded {
+            position: fixed;
+            left: 60px;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: #1a1d2e;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 2900;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-expanded.open {
+            transform: translateX(0);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .aequitas-logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .sidebar-title {
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .sidebar-close {
+            background: none;
+            border: none;
+            color: #8b8fa3;
+            cursor: pointer;
+            padding: 8px;
+            margin-left: auto;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .sidebar-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            background: transparent;
+            border: none;
+            color: #8b8fa3;
+            cursor: pointer;
+            border-radius: 8px;
+            width: 100%;
+            text-align: left;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .sidebar-menu-item:hover {
+            background: rgba(66, 153, 225, 0.1);
+            color: #4299e1;
+        }
+
+        .sidebar-menu-item.active {
+            background: rgba(66, 153, 225, 0.2);
+            color: #4299e1;
+        }
+
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
         .dashboard-container {
             padding: 20px;
             max-width: 1800px;
             margin: 0 auto;
+            margin-left: 80px; /* Account for sidebar */
         }
 
         /* Filter Bar */
@@ -243,7 +391,7 @@
             padding: 20px;
         }
 
-        .sidebar-header {
+        .sidebar-header-card {
             display: flex;
             align-items: center;
             gap: 8px;
@@ -473,6 +621,14 @@
             .monthly-chart-container {
                 height: 220px;
             }
+
+            .sidebar-nav {
+                width: 50px;
+            }
+
+            .dashboard-container {
+                margin-left: 70px;
+            }
         }
 
         /* Custom scrollbar */
@@ -497,11 +653,33 @@
 </head>
 
 <body>
+    <!-- Navigation Sidebar -->
+    <div class="sidebar-nav">
+        <button class="nav-item" onclick="toggleSidebar('market-sentiment')" title="Market Sentiment">
+            <span>📊</span>
+        </button>
+        <div class="nav-spacer"></div>
+        <button class="nav-item" onclick="logout()" title="Logout">
+            <span>🚪</span>
+        </button>
+    </div>
+
+    <!-- Expanded Sidebar -->
+    <div class="sidebar-expanded" id="expandedSidebar">
+        <div class="sidebar-header">
+            <div class="aequitas-logo">AQ</div>
+            <div class="sidebar-title" id="sidebarTitle">Market Sentiment</div>
+            <button class="sidebar-close" onclick="closeSidebar()">×</button>
+        </div>
+        <div class="sidebar-content" id="sidebarContent">
+            <!-- Content will be dynamically loaded -->
+        </div>
+    </div>
+
     <div class="refresh-btn" id="refreshBtn">
         <span onclick="loadData()">🔄 Refresh</span>
         <span class="logout-section" onclick="logout()">👤 <span id="usernameDisplay">User</span> | Logout</span>
     </div>
-
     <div class="dashboard-container">
         <!-- Filter Bar -->
         <div class="filter-bar">
@@ -606,7 +784,7 @@
 
                 <!-- Last Gaps -->
                 <div class="sidebar-card">
-                    <div class="sidebar-header">
+                    <div class="sidebar-header-card">
                         <span>Recent gaps</span>
                         <div class="info-icon">?</div>
                     </div>
@@ -657,6 +835,48 @@
         // Check authentication immediately
         if (!checkAuthentication()) {
             throw new Error('Authentication required');
+        }
+
+        // ===== SIDEBAR SYSTEM =====
+        let currentSidebarType = null;
+
+        function toggleSidebar(type) {
+            const sidebar = document.getElementById('expandedSidebar');
+            const title = document.getElementById('sidebarTitle');
+            const content = document.getElementById('sidebarContent');
+            
+            if (currentSidebarType === type && sidebar.classList.contains('open')) {
+                closeSidebar();
+                return;
+            }
+            
+            currentSidebarType = type;
+            
+            // Update content based on type
+            switch(type) {
+                case 'market-sentiment':
+                    title.textContent = 'Market Sentiment';
+                    content.innerHTML = `
+                        <div style="color: #8b8fa3; text-align: center; padding: 40px 20px;">
+                            <div style="font-size: 48px; margin-bottom: 20px;">📊</div>
+                            <h3 style="color: #ffffff; margin-bottom: 10px;">Market Sentiment Analysis</h3>
+                            <p>Real-time market sentiment analysis and indicators will be displayed here.</p>
+                            <div style="margin-top: 30px; padding: 20px; background: rgba(66, 153, 225, 0.1); border-radius: 8px; border: 1px solid rgba(66, 153, 225, 0.3);">
+                                <strong style="color: #4299e1;">Coming Soon</strong><br>
+                                <span style="font-size: 12px;">Advanced sentiment tracking for gap analysis</span>
+                            </div>
+                        </div>
+                    `;
+                    break;
+            }
+            
+            sidebar.classList.add('open');
+        }
+
+        function closeSidebar() {
+            const sidebar = document.getElementById('expandedSidebar');
+            sidebar.classList.remove('open');
+            currentSidebarType = null;
         }
 
         // ===== DASHBOARD CODE =====
@@ -933,7 +1153,6 @@
                 }
             });
         }
-
         function createPeriodAverageCharts() {
             const chartsGrid = document.getElementById('monthlyChartsGrid');
             chartsGrid.innerHTML = '';
@@ -1036,12 +1255,6 @@
            const yMax = Math.max(hodPct, maxPrice) + padding;
            const yMin = Math.min(lodPct, minPrice) - padding;
            
-           // Green line: Average HOD percentage (horizontal line) - NOW FROM MARKET OPEN
-           const hodLine = new Array(labels.length).fill(hodPct);
-           
-           // Red line: Average LOD percentage (horizontal line) - NOW FROM MARKET OPEN  
-           const lodLine = new Array(labels.length).fill(lodPct);
-           
            // Yellow line: Average HOD time (vertical line)
            const avgHODTime = periodData.avg_hod_time || 0.5; // 0-1 scale
            const hodTimeIndex = Math.round(avgHODTime * (labels.length - 1));
@@ -1062,16 +1275,6 @@
                data: {
                    labels: labels,
                    datasets: [
-                       {
-                           label: 'Avg HOD % (from market open)',
-                           data: hodLine,
-                           borderColor: '#48bb78',
-                           backgroundColor: 'transparent',
-                           borderWidth: 2,
-                           borderDash: [6, 3],
-                           pointRadius: 0,
-                           tension: 0
-                       },
                        {
                            label: 'Avg HOD Time',
                            data: hodTimeLine,
@@ -1102,16 +1305,6 @@
                            borderDash: [2, 2],
                            pointRadius: 0,
                            tension: 0
-                       },
-                       {
-                           label: 'Avg LOD % (from market open)',
-                           data: lodLine,
-                           borderColor: '#f56565',
-                           backgroundColor: 'transparent',
-                           borderWidth: 2,
-                           borderDash: [6, 3],
-                           pointRadius: 0,
-                           tension: 0
                        }
                    ]
                },
@@ -1140,6 +1333,8 @@
                                },
                                afterBody: function() {
                                    return [
+                                       `Avg HOD % (from market open): ${hodPct.toFixed(1)}%`,
+                                       `Avg LOD % (from market open): ${lodPct.toFixed(1)}%`,
                                        `Avg HOD Time: ${periodData.avg_hod_time_str || 'N/A'}`,
                                        `All percentages from market open (9:30 AM)`
                                    ];
@@ -1284,9 +1479,11 @@
            const prices = individualData.price_values || [];
            
            // Create reference lines
-           const openLine = new Array(labels.length).fill(individualData.open);
-           const highLine = new Array(labels.length).fill(individualData.high);
-           const lowLine = new Array(labels.length).fill(individualData.low);
+           const openLine = new Array(labels.length).fill(0); // Market open at 0%
+           const hodPct = ((individualData.high - individualData.open) / individualData.open) * 100;
+           const lodPct = ((individualData.low - individualData.open) / individualData.open) * 100;
+           const highLine = new Array(labels.length).fill(hodPct);
+           const lowLine = new Array(labels.length).fill(lodPct);
 
            chartInstances.individualChart = new Chart(ctx, {
                type: 'line',
@@ -1363,7 +1560,7 @@
                                    return `${gapData.ticker} - ${context[0].label}`;
                                },
                                label: function(context) {
-                                   return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
+                                   return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`;
                                },
                                afterBody: function() {
                                    return 'Market hours data only (9:30 AM - 4:00 PM EST)';
@@ -1390,7 +1587,7 @@
                            ticks: {
                                color: '#8b8fa3',
                                callback: function(value) {
-                                   return '$' + value.toFixed(2);
+                                   return value.toFixed(1) + '%';
                                }
                            }
                        }
@@ -1436,14 +1633,18 @@
                const timeLabels = [];
                const avgPrices = [];
                
-               for (let j = 0; j < 26; j++) {
+               // Start with market open
+               timeLabels.push('09:30');
+               avgPrices.push(0); // Market open = 0%
+               
+               for (let j = 1; j < 27; j++) {
                    const hour = 9 + Math.floor(j * 0.25);
                    const minute = 30 + ((j * 15) % 60);
                    timeLabels.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
                    
-                   const progress = j / 25;
-                   // FIXED: More realistic market hours price movements
-                   const baseChange = (Math.random() - 0.3) * 12; // Slight upward bias
+                   const progress = j / 26;
+                   // FIXED: More realistic market hours price movements starting from 0
+                   const baseChange = (Math.random() - 0.3) * 12 * progress; // Gradual movement from 0
                    const volatility = Math.sin(progress * Math.PI) * 3;
                    
                    avgPrices.push(baseChange + (Math.random() - 0.5) * volatility);
@@ -1489,159 +1690,18 @@
                });
            }
            
-           // Generate weekly and daily demo data with same fixes
-           for (let i = 11; i >= 0; i--) {
-               // Weekly
-               const weekDate = new Date(now);
-               weekDate.setDate(weekDate.getDate() - (i * 7));
-               const year = weekDate.getFullYear();
-               const week = Math.floor((weekDate - new Date(year, 0, 1)) / (7 * 24 * 60 * 60 * 1000)) + 1;
-               const weekKey = `${year}-W${week.toString().padStart(2, '0')}`;
-               
-               const weeklyGapperCount = Math.floor(Math.random() * 20) + 5;
-               const weeklyOTC = (Math.random() - 0.5) * 12;
-               const weeklyVolume = Math.floor(Math.random() * 30000000) + 10000000;
-               const weeklyDollarVolume = Math.floor(Math.random() * 150000000) + 50000000;
-               
-               const weeklyTimeLabels = [];
-               const weeklyAvgPrices = [];
-               
-               for (let j = 0; j < 26; j++) {
-                   const hour = 9 + Math.floor(j * 0.25);
-                   const minute = 30 + ((j * 15) % 60);
-                   weeklyTimeLabels.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
-                   weeklyAvgPrices.push((Math.random() - 0.5) * 10);
-               }
-               
-               // FIXED: Weekly HOD/LOD from market open
-               const weeklyHodPct = Math.max(...weeklyAvgPrices) + Math.random() * 3 + 1;
-               const weeklyLodPct = Math.min(...weeklyAvgPrices) - Math.random() * 2 - 0.5;
-               
-               weeklyAverages[weekKey] = {
-                   week: week,
-                   year: year,
-                   week_key: weekKey,
-                   period_name: `Week ${week}, ${year}`,
-                   gapper_count: weeklyGapperCount,
-                   avg_open_to_close: weeklyOTC,
-                   total_volume: weeklyVolume,
-                   total_dollar_volume: weeklyDollarVolume,
-                   avg_high_of_day_pct: Math.round(weeklyHodPct * 100) / 100,
-                   avg_low_of_day_pct: Math.round(weeklyLodPct * 100) / 100,
-                   avg_hod_time: 0.25 + Math.random() * 0.5,
-                   avg_hod_time_str: '12:15',
-                   time_labels: weeklyTimeLabels,
-                   avg_prices: weeklyAvgPrices
-               };
-               
-               weeklyStats.push({
-                   week: week,
-                   year: year,
-                   week_key: weekKey,
-                   gapper_count: weeklyGapperCount,
-                   total_volume: weeklyVolume,
-                   total_dollar_volume: weeklyDollarVolume,
-                   avg_open_to_close: weeklyOTC
-               });
-               
-               // Daily
-               const dailyDate = new Date(now);
-               dailyDate.setDate(dailyDate.getDate() - i);
-               const dailyKey = dailyDate.toISOString().split('T')[0];
-               const dayName = dailyDate.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' });
-               
-               const dailyGapperCount = Math.floor(Math.random() * 10) + 2;
-               const dailyOTC = (Math.random() - 0.5) * 15;
-               const dailyVolume = Math.floor(Math.random() * 15000000) + 5000000;
-               const dailyDollarVolume = Math.floor(Math.random() * 75000000) + 25000000;
-               
-               const dailyTimeLabels = [];
-               const dailyAvgPrices = [];
-               
-               for (let j = 0; j < 26; j++) {
-                   const hour = 9 + Math.floor(j * 0.25);
-                   const minute = 30 + ((j * 15) % 60);
-                   dailyTimeLabels.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
-                   dailyAvgPrices.push((Math.random() - 0.5) * 8);
-               }
-               
-               // FIXED: Daily HOD/LOD from market open
-               const dailyHodPct = Math.max(...dailyAvgPrices) + Math.random() * 2 + 0.5;
-               const dailyLodPct = Math.min(...dailyAvgPrices) - Math.random() * 1.5 - 0.3;
-               
-               dailyAverages[dailyKey] = {
-                   date: dailyKey,
-                   day_name: dayName,
-                   period_name: dayName,
-                   gapper_count: dailyGapperCount,
-                   avg_open_to_close: dailyOTC,
-                   total_volume: dailyVolume,
-                   total_dollar_volume: dailyDollarVolume,
-                   avg_high_of_day_pct: Math.round(dailyHodPct * 100) / 100,
-                   avg_low_of_day_pct: Math.round(dailyLodPct * 100) / 100,
-                   avg_hod_time: 0.2 + Math.random() * 0.6,
-                   avg_hod_time_str: '10:30',
-                   time_labels: dailyTimeLabels,
-                   avg_prices: dailyAvgPrices
-               };
-               
-               dailyStats.push({
-                   date: dailyKey,
-                   day_name: dayName,
-                   gapper_count: dailyGapperCount,
-                   total_volume: dailyVolume,
-                   total_dollar_volume: dailyDollarVolume,
-                   avg_open_to_close: dailyOTC
-               });
-           }
-           
-           // Generate last gaps with FIXED market hours data
-           const tickers = ['WHLR', 'DFLI', 'MITQ', 'AAPL', 'TSLA', 'NVDA', 'AMD', 'PLTR', 'COIN', 'RBLX'];
-           for (let i = 0; i < 20; i++) {
-               const date = new Date(now);
-               date.setDate(date.getDate() - i);
-               const dateStr = date.toISOString().split('T')[0];
-               
-               const ticker = tickers[i % tickers.length];
-               const gap = Math.random() * 150 + 60; // 60-210% gap range
-               const otc = (Math.random() - 0.5) * 20;
-               
-               const timeLabels = [];
-               for (let j = 0; j < 20; j++) {
-                   const hour = 9 + Math.floor(j * 0.33);
-                   const minute = 30 + ((j * 20) % 60);
-                   timeLabels.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
-               }
-               
-               lastGaps.push({
-                   ticker: ticker,
-                   gapPercentage: gap,
-                   volume: Math.floor(Math.random() * 50000000) + 1000000,
-                   date: dateStr,
-                   openToCloseChange: otc,
-                   individualData: {
-                       time_labels: timeLabels,
-                       price_values: timeLabels.map(() => 10 + Math.random() * 5),
-                       open: 10,
-                       high: 15,
-                       low: 8,
-                       close: 10 + otc * 0.1
-                   }
-               });
-           }
-           
            return {
                monthlyAverages: monthlyAverages,
-               weeklyAverages: weeklyAverages,
-               dailyAverages: dailyAverages,
+               weeklyAverages: {},
+               dailyAverages: {},
                monthlyStats: monthlyStats,
-               weeklyStats: weeklyStats,
-               dailyStats: dailyStats,
+               weeklyStats: [],
+               dailyStats: [],
                calendarData: {
-                   gap_dates: lastGaps.map(g => g.date),
+                   gap_dates: [],
                    days_since_last_gap: 2
                },
-               lastGaps: lastGaps,
+               lastGaps: [],
                summaryStats: {
                    total_gappers: 1500,
                    avg_gap_percentage: 85.2,
@@ -1713,6 +1773,7 @@
            document.addEventListener('keydown', function(e) {
                if (e.key === 'Escape') {
                    closeIndividualChart();
+                   closeSidebar();
                }
            });
 
