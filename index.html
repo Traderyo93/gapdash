@@ -298,18 +298,6 @@
             font-weight: 500;
         }
 
-        .stat-header .info-icon {
-            width: 16px;
-            height: 16px;
-            border: 1px solid #8b8fa3;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            cursor: help;
-        }
-
         .time-filter {
             display: flex;
             gap: 4px;
@@ -810,11 +798,6 @@
             <span>Refresh</span>
         </button>
     </div>
-        <button class="refresh-btn" onclick="loadData()">
-            <span>🔄</span>
-            <span>Refresh</span>
-        </button>
-    </div>
     <div class="dashboard-container">
         <!-- Filter Bar -->
         <div class="filter-bar">
@@ -838,7 +821,6 @@
             <div class="stat-section">
                 <div class="stat-header">
                     <span>Gappers</span>
-                    <div class="info-icon">?</div>
                     <div class="time-filter">
                         <button class="time-btn" data-period="D" data-chart="gappers">D</button>
                         <button class="time-btn" data-period="W" data-chart="gappers">W</button>
@@ -854,7 +836,6 @@
             <div class="stat-section">
                 <div class="stat-header">
                     <span>Volume</span>
-                    <div class="info-icon">?</div>
                     <div class="time-filter">
                         <button class="time-btn" data-period="D" data-chart="volume">D</button>
                         <button class="time-btn" data-period="W" data-chart="volume">W</button>
@@ -870,7 +851,6 @@
             <div class="stat-section">
                 <div class="stat-header">
                     <span>$ volume</span>
-                    <div class="info-icon">?</div>
                     <div class="time-filter">
                         <button class="time-btn" data-period="D" data-chart="dollar">D</button>
                         <button class="time-btn" data-period="W" data-chart="dollar">W</button>
@@ -891,7 +871,6 @@
                 <div class="monthly-charts-card">
                     <div class="monthly-charts-header">
                         <span>Average change from market open (9:30 AM)</span>
-                        <div class="info-icon">?</div>
                         <div class="period-selector">
                             <button class="period-btn" data-period="D">D</button>
                             <button class="period-btn" data-period="W">W</button>
@@ -921,7 +900,6 @@
                 <div class="sidebar-card">
                     <div class="sidebar-header-card">
                         <span>Recent gaps</span>
-                        <div class="info-icon">?</div>
                     </div>
                     <div class="gaps-list" id="gapsList">
                         <!-- Gap items will be populated here -->
@@ -1652,26 +1630,12 @@
            
            // Create reference lines
            const openLine = new Array(labels.length).fill(0); // Market open at 0%
-           const hodPct = ((individualData.high - individualData.open) / individualData.open) * 100;
-           const lodPct = ((individualData.low - individualData.open) / individualData.open) * 100;
-           const highLine = new Array(labels.length).fill(hodPct);
-           const lowLine = new Array(labels.length).fill(lodPct);
 
            chartInstances.individualChart = new Chart(ctx, {
                type: 'line',
                data: {
                    labels: labels,
                    datasets: [
-                       {
-                           label: 'High',
-                           data: highLine,
-                           borderColor: '#48bb78',
-                           backgroundColor: 'transparent',
-                           borderWidth: 2,
-                           borderDash: [5, 5],
-                           pointRadius: 0,
-                           tension: 0
-                       },
                        {
                            label: 'Price',
                            data: prices,
@@ -1690,16 +1654,6 @@
                            backgroundColor: 'transparent',
                            borderWidth: 2,
                            borderDash: [3, 3],
-                           pointRadius: 0,
-                           tension: 0
-                       },
-                       {
-                           label: 'Low',
-                           data: lowLine,
-                           borderColor: '#f56565',
-                           backgroundColor: 'transparent',
-                           borderWidth: 2,
-                           borderDash: [5, 5],
                            pointRadius: 0,
                            tension: 0
                        }
@@ -1967,3 +1921,5 @@
    </script>
 </body>
 </html>
+        
+    
