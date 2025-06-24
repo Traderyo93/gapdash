@@ -92,26 +92,16 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             display: flex;
             align-items: center;
-            gap: 12px;
+            justify-content: space-between;
         }
 
-        .aequitas-logo {
-            width: 32px;
-            height: 32px;
-            background: linear-gradient(135deg, #4299e1, #3182ce);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 700;
-            font-size: 14px;
-        }
-
-        .sidebar-title {
-            color: #ffffff;
-            font-size: 18px;
-            font-weight: 600;
+        .aequitas-logo-img {
+            max-width: 120px;
+            max-height: 40px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            filter: brightness(1.1) contrast(1.1);
         }
 
         .sidebar-close {
@@ -120,7 +110,6 @@
             color: #8b8fa3;
             cursor: pointer;
             padding: 8px;
-            margin-left: auto;
             border-radius: 4px;
             font-size: 16px;
         }
@@ -711,8 +700,7 @@
     <!-- Expanded Sidebar -->
     <div class="sidebar-expanded" id="expandedSidebar">
         <div class="sidebar-header">
-            <div class="aequitas-logo">AQ</div>
-            <div class="sidebar-title">AEQUITAS</div>
+            <img src="https://i.ibb.co/8DfYwWdG/Aequitas-White-Logo.png" alt="Aequitas Logo" class="aequitas-logo-img">
             <button class="sidebar-close" onclick="closeSidebar()">×</button>
         </div>
         <div class="sidebar-content" id="sidebarContent">
@@ -817,6 +805,11 @@
             <span>👤</span>
             <span id="usernameDisplay">admin</span>
         </div>
+        <button class="refresh-btn" onclick="loadData()">
+            <span>🔄</span>
+            <span>Refresh</span>
+        </button>
+    </div>
         <button class="refresh-btn" onclick="loadData()">
             <span>🔄</span>
             <span>Refresh</span>
