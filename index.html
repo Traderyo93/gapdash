@@ -132,8 +132,23 @@
 
         .sidebar-content {
             flex: 1;
-            padding: 20px;
+            padding: 20px 0;
             overflow-y: auto;
+        }
+
+        .menu-section-header {
+            color: #4299e1;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 20px 16px 8px 16px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid rgba(66, 153, 225, 0.3);
+        }
+
+        .menu-section-header:first-child {
+            margin-top: 0;
         }
 
         .sidebar-menu-item {
@@ -141,7 +156,7 @@
             align-items: center;
             gap: 12px;
             padding: 12px 16px;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             background: transparent;
             border: none;
             color: #8b8fa3;
@@ -168,11 +183,75 @@
             border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
+        .logout-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            color: #8b8fa3;
+            cursor: pointer;
+            border-radius: 8px;
+            width: 100%;
+            text-align: left;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .logout-item:hover {
+            background: rgba(245, 101, 101, 0.1);
+            color: #f56565;
+        }
+
         .dashboard-container {
             padding: 20px;
             max-width: 1800px;
             margin: 0 auto;
             margin-left: 80px; /* Account for sidebar */
+        }
+
+        /* Top Header */
+        .top-header {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .admin-info {
+            background: #252836;
+            border: 1px solid rgba(66, 153, 225, 0.3);
+            color: #4299e1;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .refresh-btn {
+            background: #4299e1;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .refresh-btn:hover {
+            background: #3182ce;
         }
 
         /* Filter Bar */
@@ -494,38 +573,6 @@
             color: #f56565;
         }
 
-        .refresh-btn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #4299e1;
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .refresh-btn:hover {
-            background: #3182ce;
-        }
-
-        .logout-section {
-            border-left: 1px solid rgba(255,255,255,0.3);
-            padding-left: 10px;
-            cursor: pointer;
-        }
-
-        .logout-section:hover {
-            color: #fed7d7;
-        }
-
         .loading {
             display: flex;
             align-items: center;
@@ -655,30 +702,125 @@
 <body>
     <!-- Navigation Sidebar -->
     <div class="sidebar-nav">
-        <button class="nav-item" onclick="toggleSidebar('market-sentiment')" title="Market Sentiment">
-            <span>📊</span>
+        <button class="nav-item" onclick="toggleSidebar()" title="Menu">
+            <span>☰</span>
         </button>
         <div class="nav-spacer"></div>
-        <button class="nav-item" onclick="logout()" title="Logout">
-            <span>🚪</span>
-        </button>
     </div>
 
     <!-- Expanded Sidebar -->
     <div class="sidebar-expanded" id="expandedSidebar">
         <div class="sidebar-header">
             <div class="aequitas-logo">AQ</div>
-            <div class="sidebar-title" id="sidebarTitle">Market Sentiment</div>
+            <div class="sidebar-title">AEQUITAS</div>
             <button class="sidebar-close" onclick="closeSidebar()">×</button>
         </div>
         <div class="sidebar-content" id="sidebarContent">
-            <!-- Content will be dynamically loaded -->
+            <!-- Analytics Section -->
+            <div class="menu-section-header">Analytics</div>
+            <button class="sidebar-menu-item active" onclick="navigateToPage('gap-analysis')">
+                <span>📊</span>
+                <span>Gap Analysis</span>
+            </button>
+            <button class="sidebar-menu-item" onclick="navigateToPage('market-sentiment')">
+                <span>💭</span>
+                <span>Market Sentiment</span>
+            </button>
+            <button class="sidebar-menu-item" onclick="navigateToPage('scanner')">
+                <span>🔍</span>
+                <span>Scanner</span>
+            </button>
+            
+            <!-- Code Collaboration Section -->
+            <div class="menu-section-header">Code Collaboration</div>
+            <button class="sidebar-menu-item" onclick="navigateToPage('file-browser')">
+                <span>📁</span>
+                <span>File Browser</span>
+            </button>
+            <button class="sidebar-menu-item" onclick="navigateToPage('recent-commits')">
+                <span>🔄</span>
+                <span>Recent Commits</span>
+            </button>
+            <button class="sidebar-menu-item" onclick="navigateToPage('pull-requests')">
+                <span>🔀</span>
+                <span>Pull Requests</span>
+            </button>
+            <button class="sidebar-menu-item" onclick="navigateToPage('code-review')">
+                <span>👥</span>
+                <span>Code Review</span>
+            </button>
+            <button class="sidebar-menu-item" onclick="navigateToPage('team-chat')">
+                <span>💬</span>
+                <span>Team Chat</span>
+            </button>
+            
+            <!-- Strategy Management Section -->
+            <div class="menu-section-header">Strategy Management</div>
+            <button class="sidebar-menu-item" onclick="navigateToPage('live-strategies')">
+                <span>⚡</span>
+                <span>Live Strategies</span>
+            </button>
+            <button class="sidebar-menu-item" onclick="navigateToPage('performance-metrics')">
+                <span>📈</span>
+                <span>Performance Metrics</span>
+            </button>
+            <button class="sidebar-menu-item" onclick="navigateToPage('deployment-pipeline')">
+                <span>🚀</span>
+                <span>Deployment Pipeline</span>
+            </button>
+            <button class="sidebar-menu-item" onclick="navigateToPage('risk-monitoring')">
+                <span>⚠️</span>
+                <span>Risk Monitoring</span>
+            </button>
+            
+            <!-- Knowledge Base Section -->
+            <div class="menu-section-header">Knowledge Base</div>
+            <button class="sidebar-menu-item" onclick="navigateToPage('documentation')">
+                <span>📚</span>
+                <span>Documentation</span>
+            </button>
+            <button class="sidebar-menu-item" onclick="navigateToPage('code-templates')">
+                <span>📝</span>
+                <span>Code Templates</span>
+            </button>
+            <button class="sidebar-menu-item" onclick="navigateToPage('best-practices')">
+                <span>✅</span>
+                <span>Best Practices</span>
+            </button>
+            <button class="sidebar-menu-item" onclick="navigateToPage('post-mortems')">
+                <span>🔍</span>
+                <span>Post-Mortems</span>
+            </button>
+            
+            <!-- Tools Section -->
+            <div class="menu-section-header">Tools</div>
+            <button class="sidebar-menu-item" onclick="navigateToPage('calendar')">
+                <span>📅</span>
+                <span>Calendar</span>
+            </button>
+            <button class="sidebar-menu-item" onclick="navigateToPage('settings')">
+                <span>⚙️</span>
+                <span>Settings</span>
+            </button>
+        </div>
+        <div class="sidebar-footer">
+            <button class="logout-item" onclick="logout()">
+                <span>🚪</span>
+                <span>Logout</span>
+            </button>
         </div>
     </div>
 
-    <div class="refresh-btn" id="refreshBtn">
-        <span onclick="loadData()">🔄 Refresh</span>
-        <span class="logout-section" onclick="logout()">👤 <span id="usernameDisplay">User</span> | Logout</span>
+    <!-- Top Header -->
+    <div class="top-header">
+        <div class="admin-info">
+            <span>👤</span>
+            <span id="usernameDisplay">admin</span>
+        </div>
+        <button class="refresh-btn" onclick="loadData()">
+            <span>🔄</span>
+            <span>Refresh</span>
+        </button>
     </div>
     <div class="dashboard-container">
         <!-- Filter Bar -->
@@ -838,45 +980,82 @@
         }
 
         // ===== SIDEBAR SYSTEM =====
-        let currentSidebarType = null;
-
-        function toggleSidebar(type) {
+        function toggleSidebar() {
             const sidebar = document.getElementById('expandedSidebar');
-            const title = document.getElementById('sidebarTitle');
-            const content = document.getElementById('sidebarContent');
-            
-            if (currentSidebarType === type && sidebar.classList.contains('open')) {
+            if (sidebar.classList.contains('open')) {
                 closeSidebar();
-                return;
+            } else {
+                sidebar.classList.add('open');
             }
-            
-            currentSidebarType = type;
-            
-            // Update content based on type
-            switch(type) {
-                case 'market-sentiment':
-                    title.textContent = 'Market Sentiment';
-                    content.innerHTML = `
-                        <div style="color: #8b8fa3; text-align: center; padding: 40px 20px;">
-                            <div style="font-size: 48px; margin-bottom: 20px;">📊</div>
-                            <h3 style="color: #ffffff; margin-bottom: 10px;">Market Sentiment Analysis</h3>
-                            <p>Real-time market sentiment analysis and indicators will be displayed here.</p>
-                            <div style="margin-top: 30px; padding: 20px; background: rgba(66, 153, 225, 0.1); border-radius: 8px; border: 1px solid rgba(66, 153, 225, 0.3);">
-                                <strong style="color: #4299e1;">Coming Soon</strong><br>
-                                <span style="font-size: 12px;">Advanced sentiment tracking for gap analysis</span>
-                            </div>
-                        </div>
-                    `;
-                    break;
-            }
-            
-            sidebar.classList.add('open');
         }
 
         function closeSidebar() {
             const sidebar = document.getElementById('expandedSidebar');
             sidebar.classList.remove('open');
-            currentSidebarType = null;
+        }
+
+        function navigateToPage(page) {
+            // Remove active from all menu items
+            document.querySelectorAll('.sidebar-menu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Add active to clicked item
+            event.target.closest('.sidebar-menu-item').classList.add('active');
+            
+            switch(page) {
+                case 'gap-analysis':
+                    // Current page - stay here
+                    break;
+                case 'market-sentiment':
+                    showComingSoon('Market Sentiment', 'Real-time sentiment analysis dashboard');
+                    break;
+                case 'file-browser':
+                    showComingSoon('File Browser', 'Navigate through trading scripts and strategies');
+                    break;
+                case 'recent-commits':
+                    showComingSoon('Recent Commits', 'Latest code changes and commit history');
+                    break;
+                case 'pull-requests':
+                    showComingSoon('Pull Requests', 'Code reviews and approvals');
+                    break;
+                case 'code-review':
+                    showComingSoon('Code Review', 'Inline comments and code annotations');
+                    break;
+                case 'team-chat':
+                    showComingSoon('Team Chat', 'Code-specific discussions and strategy debates');
+                    break;
+                case 'live-strategies':
+                    showComingSoon('Live Strategies', 'Running algorithms with P&L tracking');
+                    break;
+                case 'performance-metrics':
+                    showComingSoon('Performance Metrics', 'Backtest results and strategy performance');
+                    break;
+                case 'deployment-pipeline':
+                    showComingSoon('Deployment Pipeline', 'Test → Staging → Production workflow');
+                    break;
+                case 'risk-monitoring':
+                    showComingSoon('Risk Monitoring', 'Real-time strategy risk alerts');
+                    break;
+                case 'documentation':
+                    showComingSoon('Documentation', 'Trading logic and strategy documentation');
+                    break;
+                case 'code-templates':
+                    showComingSoon('Code Templates', 'Standardized patterns for new strategies');
+                    break;
+                case 'best-practices':
+                    showComingSoon('Best Practices', 'Team coding standards and guidelines');
+                    break;
+                case 'post-mortems':
+                    showComingSoon('Post-Mortems', 'Analysis of failed trades and bugs');
+                    break;
+                default:
+                    showComingSoon(page.replace('-', ' ').toUpperCase(), 'Feature coming soon');
+            }
+        }
+
+        function showComingSoon(title, description) {
+            alert(`${title}\n\n${description}\n\nComing soon to the Aequitas platform!`);
         }
 
         // ===== DASHBOARD CODE =====
@@ -1715,7 +1894,7 @@
        // Event listeners
        document.addEventListener('DOMContentLoaded', function() {
            // Set up authentication display
-           const username = localStorage.getItem('username') || 'User';
+           const username = localStorage.getItem('username') || 'admin';
            document.getElementById('usernameDisplay').textContent = username;
 
            // Add event listeners to top chart time filter buttons
