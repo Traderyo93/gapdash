@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-FIXED Gap Scanner Data Updater - Corrected Data Scale for HOD/LOD Intersection
+FIXED Gap Scanner Data Updater - Market Open Baseline Fix
 Key Fixes:
 1. Individual chart data now uses percentages from market open (not dollar prices)
 2. Both averaging and individual data use same intelligent price selection logic
 3. Mathematical consistency ensures blue price curve can reach green/red HOD/LOD lines
-4. Enhanced verification output to confirm intersections work
+4. FIXED: Charts now start at exactly 0% at market open (9:30 AM)
+5. Enhanced verification output to confirm intersections work
 """
 
 import os
@@ -93,8 +94,8 @@ class GapDataUpdater:
 
     def process_gapper_intraday(self, intraday_data, ticker, date_str, prev_close, gap_percentage):
         """
-        FIXED: Now both averaging data AND individual chart data use same percentage scale
-        This ensures the blue price curve can actually reach the green/red HOD/LOD lines
+        FIXED: Now includes market open baseline and uses percentage scale
+        This ensures charts start at exactly 0% at 9:30 AM market open
         """
         try:
             df = pd.DataFrame(intraday_data)
@@ -162,16 +163,17 @@ class GapDataUpdater:
             daily_high_pct = ((day_high - day_open) / day_open) * 100
             daily_low_pct = ((day_low - day_open) / day_open) * 100
             
-            # Create normalized time series with INTELLIGENT PRICE CURVE
-            times_normalized = []
-            prices_normalized = []
-            highs_normalized = []
-            lows_normalized = []
+            # FIXED: Start with market open baseline (0% at 9:30 AM)
+            times_normalized = [0.0]  # Market open = 0% of trading day
+            prices_normalized = [0.0]  # Market open = 0% baseline
+            highs_normalized = [0.0]   # Market open baseline
+            lows_normalized = [0.0]    # Market open baseline
             
-            # FIXED: Also create individual chart data using the SAME logic
-            individual_time_labels = []
-            individual_price_values_pct = []  # Now in percentages, not dollars!
+            # FIXED: Individual chart data also starts with market open
+            individual_time_labels = ['09:30']  # Market open time
+            individual_price_values_pct = [0.0]  # Market open = 0% baseline
             
+            # Process 5-minute intervals starting from first interval after market open
             for i, (timestamp, row) in enumerate(resampled.iterrows()):
                 # Calculate progress through trading day
                 seconds_from_930 = (timestamp.replace(tzinfo=eastern) - market_start).total_seconds()
@@ -220,9 +222,9 @@ class GapDataUpdater:
                 highs_normalized.append(interval_high_pct)
                 lows_normalized.append(interval_low_pct)
                 
-                # FIXED: Individual chart data now uses the SAME intelligent selection!
+                # FIXED: Individual chart data uses same logic
                 individual_time_labels.append(timestamp.strftime('%H:%M'))
-                individual_price_values_pct.append(price_pct)  # Same logic as averaging!
+                individual_price_values_pct.append(price_pct)
             
             # VERIFICATION: Check that our price curve can reach the extremes
             max_price_curve = max(prices_normalized) if prices_normalized else 0
@@ -231,9 +233,8 @@ class GapDataUpdater:
             # Debug output to verify the fix works
             print(f"  FIXED {ticker}: Price curve range: {min_price_curve:.1f}% to {max_price_curve:.1f}%")
             print(f"  FIXED {ticker}: HOD/LOD targets: {daily_high_pct:.1f}% / {daily_low_pct:.1f}%")
-            print(f"  FIXED {ticker}: Can reach HOD: {max_price_curve >= daily_high_pct * 0.9}")
-            print(f"  FIXED {ticker}: Can reach LOD: {min_price_curve <= daily_low_pct * 0.9}")
-            print(f"  FIXED {ticker}: Individual chart data range: {min(individual_price_values_pct):.1f}% to {max(individual_price_values_pct):.1f}%")
+            print(f"  FIXED {ticker}: Starts at market open: {prices_normalized[0]:.1f}%")
+            print(f"  FIXED {ticker}: Individual chart starts at: {individual_price_values_pct[0]:.1f}%")
             
             # Calculate stats - ALL based on MARKET HOURS data using market open as baseline
             open_to_close_change = ((day_close - day_open) / day_open) * 100
@@ -260,12 +261,12 @@ class GapDataUpdater:
                 'dollar_volume': int(dollar_volume),
                 'pre_market_volume': int(pre_market_volume),
                 'times_normalized': times_normalized,
-                'prices_normalized': prices_normalized,      # For averaging - can reach HOD/LOD!
+                'prices_normalized': prices_normalized,      # For averaging - starts at 0%!
                 'highs_normalized': highs_normalized,
                 'lows_normalized': lows_normalized,
-                # FIXED: Individual chart data now in percentages and uses same logic!
+                # FIXED: Individual chart data starts at 0% market open
                 'time_labels': individual_time_labels,
-                'price_values': individual_price_values_pct  # NOW IN PERCENTAGES!
+                'price_values': individual_price_values_pct  # NOW STARTS AT 0%!
             }
             
         except Exception as e:
@@ -366,14 +367,14 @@ class GapDataUpdater:
     def calculate_period_average(self, gappers, period_name):
         """
         Calculate average pattern with 5-minute resolution
-        Now works with the fixed price curves that can reach HOD/LOD
+        Now includes market open baseline - starts at 0%
         """
         if not gappers:
             return None
             
-        # Create standardized time points for 5-minute intervals (78 points for 390 minutes)
+        # Create standardized time points for 5-minute intervals (79 points for market open + 78 intervals)
         market_minutes = 6.5 * 60  # 390 minutes
-        time_points = np.linspace(0, 1, 78)  # 78 points for 5-min intervals
+        time_points = np.linspace(0, 1, 79)  # 79 points: market open + 78 intervals
         
         all_price_curves = []
         all_high_curves = []
@@ -412,7 +413,7 @@ class GapDataUpdater:
         if not all_price_curves:
             return None
             
-        # Calculate averages - NOW they should intersect with HOD/LOD!
+        # Calculate averages - NOW they start at 0%!
         avg_prices = np.mean(all_price_curves, axis=0)
         avg_highs = np.mean(all_high_curves, axis=0)
         avg_lows = np.mean(all_low_curves, axis=0)
@@ -422,14 +423,15 @@ class GapDataUpdater:
         avg_low_of_day_pct = np.mean(low_of_day_percentages)    # Average % loss to LOD
         avg_hod_time = np.mean(high_of_day_times)               # Average time HOD occurs
         
-        # VERIFICATION: Check intersection capability
+        # VERIFICATION: Check baseline and intersection capability
+        first_price = avg_prices[0]
         max_avg_price = np.max(avg_prices)
         min_avg_price = np.min(avg_prices)
         
         print(f"PERIOD {period_name} VERIFICATION:")
+        print(f"  Starts at market open: {first_price:.1f}% (should be 0.0%)")
         print(f"  Avg price curve range: {min_avg_price:.1f}% to {max_avg_price:.1f}%")
         print(f"  Target HOD/LOD: {avg_high_of_day_pct:.1f}% / {avg_low_of_day_pct:.1f}%")
-        print(f"  Intersection ratio: {(max_avg_price/avg_high_of_day_pct)*100:.0f}% HOD, {(min_avg_price/avg_low_of_day_pct)*100:.0f}% LOD")
         
         # Convert average HOD time back to actual time
         hod_minutes_from_930 = avg_hod_time * market_minutes
@@ -440,9 +442,9 @@ class GapDataUpdater:
             hod_minute -= 60
         avg_hod_time_str = f"{hod_hour:02d}:{hod_minute:02d}"
         
-        # Create time labels for 5-minute intervals (9:30 AM - 4:00 PM)
-        time_labels = []
-        for i, t in enumerate(time_points):
+        # Create time labels starting with market open
+        time_labels = ['09:30']  # Start with market open
+        for i, t in enumerate(time_points[1:], 1):  # Skip first point, already added
             minutes_from_930 = t * market_minutes
             hour = 9 + int(minutes_from_930 // 60)
             minute = 30 + int(minutes_from_930 % 60)
@@ -465,7 +467,7 @@ class GapDataUpdater:
             'avg_hod_time': avg_hod_time,                             # YELLOW LINE position
             'avg_hod_time_str': avg_hod_time_str,
             'time_labels': time_labels,
-            'avg_prices': [round(p, 2) for p in avg_prices],          # BLUE LINE - NOW intersects!
+            'avg_prices': [round(p, 2) for p in avg_prices],          # BLUE LINE - NOW starts at 0%!
             'avg_highs': [round(h, 2) for h in avg_highs],
             'avg_lows': [round(l, 2) for l in avg_lows],
             'open_line': [0.0] * len(time_labels)  # Reference line at 0% (market open)
@@ -613,149 +615,151 @@ class GapDataUpdater:
         
         while len(trading_days) < days:
             if current_date.weekday() < 5:  # Monday = 0, Friday = 4
-                trading_days.append(current_date)
-            current_date -= timedelta(days=1)
-        
-        return list(reversed(trading_days))
+               trading_days.append(current_date)
+           current_date -= timedelta(days=1)
+       
+       return list(reversed(trading_days))
 
-    def calculate_calendar_data(self, all_gappers):
-        """Calculate calendar data"""
-        gap_dates = set()
-        for gapper in all_gappers:
-            gap_dates.add(gapper['date'])
-        
-        # Calculate days since last gap
-        today = datetime.now().date()
-        days_since_gap = 0
-        
-        if gap_dates:
-            latest_gap = max(datetime.strptime(date, '%Y-%m-%d').date() for date in gap_dates)
-            days_since_gap = (today - latest_gap).days
-        
-        return {
-            'gap_dates': list(gap_dates),
-            'days_since_last_gap': max(0, days_since_gap)
-        }
+   def calculate_calendar_data(self, all_gappers):
+       """Calculate calendar data"""
+       gap_dates = set()
+       for gapper in all_gappers:
+           gap_dates.add(gapper['date'])
+       
+       # Calculate days since last gap
+       today = datetime.now().date()
+       days_since_gap = 0
+       
+       if gap_dates:
+           latest_gap = max(datetime.strptime(date, '%Y-%m-%d').date() for date in gap_dates)
+           days_since_gap = (today - latest_gap).days
+       
+       return {
+           'gap_dates': list(gap_dates),
+           'days_since_last_gap': max(0, days_since_gap)
+       }
 
-    def daily_update(self):
-        """Main update function with fixed data scale implementation"""
-        print(f"🚀 Starting FIXED Gap Scanner Update at {datetime.now()}")
-        print("✅ CRITICAL FIX: Individual chart data now uses percentages from market open")
-        print("✅ CRITICAL FIX: Both averaging and individual data use same intelligent selection")
-        print("✅ CRITICAL FIX: Blue price curve can now reach green/red HOD/LOD lines")
-        print("🔧 Features:")
-        print("   - 5-minute intervals for better resolution (78 data points)")
-        print("   - Intelligent price selection prioritizing extremes")
-        print("   - Mathematical consistency between all chart elements")
-        print("   - Market hours only calculations (9:30-4:00 PM EST)")
-        print("   - Enhanced verification system")
-        
-        # Test API connection
-        try:
-            test_url = "https://api.polygon.io/v1/marketstatus/now"
-            test_response = requests.get(test_url, params={'apiKey': self.api_key}, timeout=10)
-            test_response.raise_for_status()
-            print("✓ API connection successful!")
-        except Exception as e:
-            print(f"❌ API connection failed: {e}")
-            return
-        
-        # Get trading days to ensure 12 full months
-        trading_days = self.get_trading_days(250)  # 250 days for 12+ months
-        print(f"Processing {len(trading_days)} trading days to ensure 12 full months...")
-        
-        all_gappers = []
-        
-        # Process each trading day
-        for i, date in enumerate(trading_days):
-            print(f"\nDay {i+1}/{len(trading_days)}: {date.strftime('%Y-%m-%d')}")
-            
-            daily_gappers = self.fetch_candidates_for_date(date)
-            if daily_gappers:
-                all_gappers.extend(daily_gappers)
-        
-        print(f"\n📊 Processing {len(all_gappers)} total gappers...")
-        
-        # Calculate all period averages
-        monthly_averages, weekly_averages, daily_averages = self.calculate_all_period_averages(all_gappers)
-        
-        # Calculate time period aggregates for top charts
-        time_aggregates = self.calculate_time_period_aggregates(monthly_averages, weekly_averages, daily_averages)
-        
-        # Calculate calendar data
-        calendar_data = self.calculate_calendar_data(all_gappers)
-        
-        # Get recent gaps for sidebar
-        recent_gappers = sorted(all_gappers, key=lambda x: x['date'], reverse=True)[:50]
-        
-        # Prepare complete cache data
-        cache_data = {
-            'lastUpdated': datetime.now().isoformat(),
-            'monthlyAverages': monthly_averages,
-            'weeklyAverages': weekly_averages,
-            'dailyAverages': daily_averages,
-            'monthlyStats': time_aggregates['monthly'],
-            'weeklyStats': time_aggregates['weekly'],
-            'dailyStats': time_aggregates['daily'],
-            'calendarData': calendar_data,
-            'lastGaps': [{
-                'ticker': g['ticker'],
-                'gapPercentage': g['gap_percentage'],
-                'volume': g['total_volume'],
-                'date': g['date'],
-                'openToCloseChange': g['open_to_close_change'],
-                'individualData': {
-                    'time_labels': g['time_labels'],
-                    'price_values': g['price_values'],  # NOW IN PERCENTAGES!
-                    'open': g['open'],
-                    'high': g['high'],
-                    'low': g['low'],
-                    'close': g['close']
-                }
-            } for g in recent_gappers],
-            'totalGappers': len(all_gappers),
-            'summaryStats': {
-                'total_gappers': len(all_gappers),
-                'avg_gap_percentage': round(sum(g['gap_percentage'] for g in all_gappers) / len(all_gappers), 2) if all_gappers else 0,
-                'avg_open_to_close': round(sum(g['open_to_close_change'] for g in all_gappers) / len(all_gappers), 2) if all_gappers else 0,
-                'days_since_last_gap': calendar_data['days_since_last_gap']
-            }
-        }
-        
-        # Save to cache file
-        with open(self.cache_file, 'w') as f:
-            json.dump(cache_data, f, indent=2)
-            
-        print(f"\n✅ FIXED UPDATE COMPLETE!")
-        print(f"📁 Results saved to: {self.cache_file}")
-        print(f"📊 Total gappers processed: {len(all_gappers)}")
-        print(f"📅 Monthly averages: {len(monthly_averages)} months")
-        print(f"📅 Weekly averages: {len(weekly_averages)} weeks")  
-        print(f"📅 Daily averages: {len(daily_averages)} days")
-        print(f"🗓️ Days since last gap: {calendar_data['days_since_last_gap']}")
-        
-        # Show date range covered
-        if monthly_averages:
-            month_keys = sorted(monthly_averages.keys())
-            print(f"📆 Month range: {month_keys[0]} to {month_keys[-1]}")
-        
-        # Sample verification info
-        if monthly_averages:
-            sample_month = list(monthly_averages.values())[0]
-            print(f"📈 Look for VERIFICATION output above showing intersection ratios")
-            print(f"📊 Using 5-minute intervals: {len(sample_month.get('time_labels', []))} data points per chart")
-        
-        # Verify file was created
-        if os.path.exists(self.cache_file):
-            file_size = os.path.getsize(self.cache_file)
-            print(f"✓ Cache file created successfully: {file_size:,} bytes")
-        else:
-            print("❌ ERROR: Cache file was not created!")
+   def daily_update(self):
+       """Main update function with market open baseline fix"""
+       print(f"🚀 Starting MARKET OPEN BASELINE FIX Gap Scanner Update at {datetime.now()}")
+       print("✅ CRITICAL FIX: Charts now start at exactly 0% at market open (9:30 AM)")
+       print("✅ CRITICAL FIX: Individual chart data now uses percentages from market open")
+       print("✅ CRITICAL FIX: Both averaging and individual data use same intelligent selection")
+       print("✅ CRITICAL FIX: Mathematical consistency between all chart elements")
+       print("🔧 Features:")
+       print("   - Market open baseline: All charts start at 0% at 9:30 AM")
+       print("   - 5-minute intervals for better resolution (79 data points)")
+       print("   - Intelligent price selection prioritizing extremes")
+       print("   - Market hours only calculations (9:30-4:00 PM EST)")
+       print("   - Enhanced verification system")
+       
+       # Test API connection
+       try:
+           test_url = "https://api.polygon.io/v1/marketstatus/now"
+           test_response = requests.get(test_url, params={'apiKey': self.api_key}, timeout=10)
+           test_response.raise_for_status()
+           print("✓ API connection successful!")
+       except Exception as e:
+           print(f"❌ API connection failed: {e}")
+           return
+       
+       # Get trading days to ensure 12 full months
+       trading_days = self.get_trading_days(250)  # 250 days for 12+ months
+       print(f"Processing {len(trading_days)} trading days to ensure 12 full months...")
+       
+       all_gappers = []
+       
+       # Process each trading day
+       for i, date in enumerate(trading_days):
+           print(f"\nDay {i+1}/{len(trading_days)}: {date.strftime('%Y-%m-%d')}")
+           
+           daily_gappers = self.fetch_candidates_for_date(date)
+           if daily_gappers:
+               all_gappers.extend(daily_gappers)
+       
+       print(f"\n📊 Processing {len(all_gappers)} total gappers...")
+       
+       # Calculate all period averages
+       monthly_averages, weekly_averages, daily_averages = self.calculate_all_period_averages(all_gappers)
+       
+       # Calculate time period aggregates for top charts
+       time_aggregates = self.calculate_time_period_aggregates(monthly_averages, weekly_averages, daily_averages)
+       
+       # Calculate calendar data
+       calendar_data = self.calculate_calendar_data(all_gappers)
+       
+       # Get recent gaps for sidebar
+       recent_gappers = sorted(all_gappers, key=lambda x: x['date'], reverse=True)[:50]
+       
+       # Prepare complete cache data
+       cache_data = {
+           'lastUpdated': datetime.now().isoformat(),
+           'monthlyAverages': monthly_averages,
+           'weeklyAverages': weekly_averages,
+           'dailyAverages': daily_averages,
+           'monthlyStats': time_aggregates['monthly'],
+           'weeklyStats': time_aggregates['weekly'],
+           'dailyStats': time_aggregates['daily'],
+           'calendarData': calendar_data,
+           'lastGaps': [{
+               'ticker': g['ticker'],
+               'gapPercentage': g['gap_percentage'],
+               'volume': g['total_volume'],
+               'date': g['date'],
+               'openToCloseChange': g['open_to_close_change'],
+               'individualData': {
+                   'time_labels': g['time_labels'],
+                   'price_values': g['price_values'],  # NOW STARTS AT 0%!
+                   'open': g['open'],
+                   'high': g['high'],
+                   'low': g['low'],
+                   'close': g['close']
+               }
+           } for g in recent_gappers],
+           'totalGappers': len(all_gappers),
+           'summaryStats': {
+               'total_gappers': len(all_gappers),
+               'avg_gap_percentage': round(sum(g['gap_percentage'] for g in all_gappers) / len(all_gappers), 2) if all_gappers else 0,
+               'avg_open_to_close': round(sum(g['open_to_close_change'] for g in all_gappers) / len(all_gappers), 2) if all_gappers else 0,
+               'days_since_last_gap': calendar_data['days_since_last_gap']
+           }
+       }
+       
+       # Save to cache file
+       with open(self.cache_file, 'w') as f:
+           json.dump(cache_data, f, indent=2)
+           
+       print(f"\n✅ MARKET OPEN BASELINE FIX COMPLETE!")
+       print(f"📁 Results saved to: {self.cache_file}")
+       print(f"📊 Total gappers processed: {len(all_gappers)}")
+       print(f"📅 Monthly averages: {len(monthly_averages)} months")
+       print(f"📅 Weekly averages: {len(weekly_averages)} weeks")  
+       print(f"📅 Daily averages: {len(daily_averages)} days")
+       print(f"🗓️ Days since last gap: {calendar_data['days_since_last_gap']}")
+       print(f"📈 CRITICAL: All charts now start at 0% at market open (9:30 AM)")
+       
+       # Show date range covered
+       if monthly_averages:
+           month_keys = sorted(monthly_averages.keys())
+           print(f"📆 Month range: {month_keys[0]} to {month_keys[-1]}")
+       
+       # Sample verification info
+       if monthly_averages:
+           sample_month = list(monthly_averages.values())[0]
+           print(f"📈 Look for VERIFICATION output above showing market open baseline")
+           print(f"📊 Using market open + 5-minute intervals: {len(sample_month.get('time_labels', []))} data points per chart")
+       
+       # Verify file was created
+       if os.path.exists(self.cache_file):
+           file_size = os.path.getsize(self.cache_file)
+           print(f"✓ Cache file created successfully: {file_size:,} bytes")
+       else:
+           print("❌ ERROR: Cache file was not created!")
 
 def main():
-    """Main entry point"""
-    updater = GapDataUpdater()
-    updater.daily_update()
+   """Main entry point"""
+   updater = GapDataUpdater()
+   updater.daily_update()
 
 if __name__ == "__main__":
-    main()
+   main()
