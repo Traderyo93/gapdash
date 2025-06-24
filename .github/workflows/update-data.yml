@@ -1,23 +1,16 @@
-name: Update Gapper Data
+name: Update Gap Data
 
 on:
   schedule:
-    # Runs at 9 PM UK time (4 PM EST) 
-    - cron: '0 21 * * *'
-  workflow_dispatch: # Allows manual trigger
+    - cron: '0 22 * * 1-5'  # 6 PM EST weekdays
+  workflow_dispatch:
 
 jobs:
   update-data:
     runs-on: ubuntu-latest
-    timeout-minutes: 120  # Increased timeout for detailed data processing
-    
-    permissions:
-      contents: write
     
     steps:
     - uses: actions/checkout@v3
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -26,30 +19,19 @@ jobs:
     
     - name: Install dependencies
       run: |
-        pip install pandas numpy requests pytz
+        python -m pip install --upgrade pip
+        pip install requests pandas numpy pytz
     
     - name: Run detailed data collector
       env:
         POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
-      run: |
-        python update_data.py
-      timeout-minutes: 100  # Specific timeout for data collection
+      run: python update_data.py
     
     - name: Check if data file was created
       run: |
-        if [ -f "data/gap_data_cache.json" ]; then
+        if [ -f "gap_data_cache.json" ]; then
           echo "✅ Data file created successfully"
-          ls -la data/
-          echo "📁 File size: $(du -h data/gap_data_cache.json)"
-          
-          # Check if file has reasonable content
-          if [ $(wc -c < "data/gap_data_cache.json") -gt 1000 ]; then
-            echo "✅ Data file has sufficient content"
-            head -20 data/gap_data_cache.json
-          else
-            echo "❌ WARNING: Data file seems too small"
-            cat data/gap_data_cache.json
-          fi
+          ls -la gap_data_cache.json
         else
           echo "❌ ERROR: Data file was not created"
           exit 1
@@ -57,36 +39,17 @@ jobs:
     
     - name: Validate JSON structure
       run: |
-        python -c "
-        import json
-        with open('data/gap_data_cache.json', 'r') as f:
-            data = json.load(f)
-        print('✅ JSON is valid')
-        print(f'📊 Time periods: {list(data.get(\"timePeriodsData\", {}).keys())}')
-        print(f'📈 Total gappers: {data.get(\"totalGappers\", 0)}')
-        print(f'📅 Last updated: {data.get(\"lastUpdated\", \"Unknown\")}')
-        "
+        if python -c "import json; json.load(open('gap_data_cache.json'))"; then
+          echo "✅ JSON structure is valid"
+        else
+          echo "❌ ERROR: Invalid JSON structure"
+          exit 1
+        fi
     
     - name: Commit and push if changed
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add data/gap_data_cache.json
-        
-        if git diff --staged --quiet; then
-          echo "📝 No changes to commit"
-        else
-          git commit -m "Update detailed intraday gapper data $(date)"
-          
-          # Retry logic for push conflicts
-          for i in {1..5}; do
-            if git push; then
-              echo "✅ Successfully pushed changes"
-              break
-            else
-              echo "⚠️ Push failed on attempt $i, retrying..."
-              git pull origin main --rebase --strategy-option=ours
-              sleep 5
-            fi
-          done
-        fi
+        git add gap_data_cache.json
+        git diff --staged --quiet || git commit -m "Update gap data cache [$(date)]"
+        git push
