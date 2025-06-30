@@ -1493,11 +1493,16 @@
            const minPrice = Math.min(...avgPrices);
            
            // Use dynamic padding for better scaling
-           const dataRange = Math.max(Math.abs(hodPct), Math.abs(lodPct), Math.abs(maxPrice), Math.abs(minPrice));
-           const padding = Math.max(2, dataRange * 0.15); // 15% padding, minimum 2%
-           
-           const yMax = Math.max(hodPct, maxPrice) + padding;
-           const yMin = Math.min(lodPct, minPrice) - padding;
+            // FIXED: Always include 0% (market open) in the range
+            const allValues = [...avgPrices, hodPct, lodPct, 0]; // Include 0%
+            const maxValue = Math.max(...allValues);
+            const minValue = Math.min(...allValues);
+            
+            const range = maxValue - minValue;
+            const padding = Math.max(1, range * 0.1); // 10% padding, minimum 1%
+            
+            const yMax = maxValue + padding;
+            const yMin = minValue - padding;
            
            // Yellow line: Average HOD time (vertical line)
            const avgHODTime = periodData.avg_hod_time || 0.5; // 0-1 scale
