@@ -1481,8 +1481,13 @@
            
            const ctxContext = ctx.getContext('2d');
            
-           const labels = periodData.time_labels || [];
-           const avgPrices = periodData.avg_prices || [];
+            const labels = periodData.time_labels || [];
+            const avgPrices = periodData.avg_prices || [];
+            
+            // FORCE the first data point to be 0% (market open)
+            if (avgPrices.length > 0) {
+                avgPrices[0] = 0; // Force market open to 0%
+            }
            
            // Use market-hours-only HOD/LOD percentages from market open
            const hodPct = periodData.avg_high_of_day_pct || 0;  
@@ -1492,14 +1497,13 @@
            const maxPrice = Math.max(...avgPrices);
            const minPrice = Math.min(...avgPrices);
            
-           // Use dynamic padding for better scaling
-            // FIXED: Always include 0% (market open) in the range
-            const allValues = [...avgPrices, hodPct, lodPct, 0]; // Include 0%
-            const maxValue = Math.max(...allValues);
-            const minValue = Math.min(...allValues);
+            // FIXED: Only use actual price data for Y-axis scaling, always include 0%
+            const priceValues = [...avgPrices, 0]; // Only price data + market open
+            const maxValue = Math.max(...priceValues);
+            const minValue = Math.min(...priceValues);
             
-            const range = maxValue - minValue;
-            const padding = Math.max(1, range * 0.1); // 10% padding, minimum 1%
+            const range = Math.max(Math.abs(maxValue), Math.abs(minValue));
+            const padding = Math.max(1, range * 0.15); // 15% padding, minimum 1%
             
             const yMax = maxValue + padding;
             const yMin = minValue - padding;
