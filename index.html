@@ -1150,7 +1150,7 @@
             loadingEl.style.display = 'block';
 
             try {
-                const response = await fetch('./gap_data_cache.json');
+                const response = await fetch('./gap_data_cache.json?v=' + Date.now());
                 if (!response.ok) {
                     throw new Error('Data file not found');
                 }
