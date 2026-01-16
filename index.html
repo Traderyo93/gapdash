@@ -1422,7 +1422,7 @@
             }
             
             // Sort periods by date (most recent first)
-            const sortedPeriods = Object.keys(periodData).sort((a, b) => b.localeCompare(a));
+            const sortedPeriods = Object.keys(periodData).sort((a, b) => b.localeCompare(a)); console.log('Monthly keys:', sortedPeriods.slice(0,5));
             const periodsToShow = currentBottomPeriod === 'D' ? 12 : (currentBottomPeriod === 'W' ? 12 : 12);
            
            // Create charts for each period
